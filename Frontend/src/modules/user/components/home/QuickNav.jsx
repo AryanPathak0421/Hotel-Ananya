@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Bed, Coffee, Waves, Heart } from 'lucide-react';
 
 const navItems = [
-    { icon: Bed, name: 'Stay', color: 'text-primary', path: '/rooms' },
-    { icon: Coffee, name: 'Dine', color: 'text-blue-500', path: '/gallery' },
-    { icon: Waves, name: 'Dip', color: 'text-cyan-500', path: '/gallery' },
-    { icon: Heart, name: 'Care', color: 'text-rose-500', path: '/contact' },
+    { icon: Bed, name: 'Stay', color: 'text-primary', path: '/stay' },
+    { icon: Coffee, name: 'Dine', color: 'text-blue-500', path: '/dine' },
+    { icon: Waves, name: 'Dip', color: 'text-cyan-500', path: '/dip' },
+    { icon: Heart, name: 'Care', color: 'text-rose-500', path: '/care' },
 ];
 
 const QuickNav = () => {

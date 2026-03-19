@@ -16,25 +16,29 @@ const AdminLogin = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
-        await new Promise(r => setTimeout(r, 800));
 
-        if (email === 'admin@ananya.com' && password === 'admin123') {
-            login({ name: 'System Admin', email, role: 'admin' });
-            navigate('/admin');
+        const result = await login(email, password);
+
+        if (result.success) {
+            if (result.role === 'admin') {
+                navigate('/admin');
+            } else {
+                setError('Access Denied. Only authorized staff can login here.');
+            }
         } else {
-            setError('Access Denied. Only authorized staff can login here.');
+            setError(result.message);
         }
         setLoading(false);
     };
 
     return (
         <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center px-4 py-12">
-            {/* Brand */}
-            <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-serif text-xl italic shadow-lg shadow-primary/30">a</div>
-                <div>
-                    <p className="text-[9px] font-black tracking-[0.4em] text-white/40 uppercase">Ananya</p>
-                    <p className="text-[7px] font-bold text-primary tracking-widest uppercase">Management Portal</p>
+            {/* Brand Logo Above Card */}
+            <div className="flex flex-col items-center mb-10 transition-all duration-700 animate-in fade-in slide-in-from-top-6">
+                <img src="/logo.png" alt="Ananya Hotel" className="h-20 w-auto drop-shadow-2xl brightness-0 invert opacity-80" />
+                <div className="mt-2 text-center">
+                    <p className="text-[10px] font-black tracking-[0.6em] text-white/40 uppercase">Ananya</p>
+                    <p className="text-[7px] font-bold text-primary tracking-[0.3em] uppercase">Management Portal</p>
                 </div>
             </div>
 

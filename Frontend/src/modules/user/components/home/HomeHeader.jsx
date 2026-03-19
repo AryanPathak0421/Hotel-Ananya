@@ -34,7 +34,7 @@ const HomeHeader = () => {
                     {user ? (
                         <div
                             onClick={() => navigate('/profile')}
-                            className="w-8 h-8 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center text-[10px] font-black text-primary cursor-pointer active:scale-95 transition-all"
+                            className="w-8 h-8 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-center text-[10px] font-bold text-primary cursor-pointer active:scale-95 transition-all"
                         >
                             {user.name[0]}
                         </div>

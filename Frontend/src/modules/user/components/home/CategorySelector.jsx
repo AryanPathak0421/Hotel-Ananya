@@ -13,7 +13,7 @@ const CategorySelector = () => {
                     <button
                         key={i}
                         onClick={() => i === 1 ? navigate('/rooms') : i === 4 ? navigate('/about') : null}
-                        className={`flex-shrink-0 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${i === 0 ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary/40 border border-slate-100 hover:border-primary/20'}`}
+                        className={`flex-shrink-0 px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${i === 0 ? 'bg-secondary text-white shadow-md' : 'bg-white text-secondary/40 border border-slate-100 hover:border-primary/20'}`}
                     >
                         {cat}
                     </button>

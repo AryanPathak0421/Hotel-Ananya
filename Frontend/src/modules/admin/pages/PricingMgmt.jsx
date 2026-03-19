@@ -1,0 +1,333 @@
+import { useState, useEffect } from 'react';
+import api from '../../../services/api';
+import { Plus, Edit2, Trash2, X, Coffee, ChevronDown } from 'lucide-react';
+
+const EMPTY_FORM = {
+    roomVariant: '', ratePlan: '', planName: '', adult1Price: 0, adult2Price: 0, extraAdultPrice: 0, childPrice: 0, mealsIncluded: ''
+};
+
+const PricingMgmt = () => {
+    const [roomTypes, setRoomTypes] = useState([]);
+    const [variants, setVariants] = useState([]);
+    const [plans, setPlans] = useState([]);
+    const [ratePlans, setRatePlans] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPlan, setEditingPlan] = useState(null);
+    const [selectedRoomType, setSelectedRoomType] = useState('');
+    const [formData, setFormData] = useState(EMPTY_FORM);
+
+    const fetchData = async () => {
+        try {
+            const [roomsRes, plansRes, ratesRes] = await Promise.all([
+                api.get('/rooms'),
+                api.get('/pricing'),
+                api.get('/setup/rate-plans')
+            ]);
+            setRoomTypes(roomsRes.data);
+            setPlans(plansRes.data);
+            setRatePlans(ratesRes.data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchData(); }, []);
+
+    // When roomType changes in the form, re-fetch variants
+    useEffect(() => {
+        if (!selectedRoomType) { setVariants([]); return; }
+        api.get(`/rooms/variants/${selectedRoomType}`)
+            .then(r => setVariants(r.data))
+            .catch(() => setVariants([]));
+    }, [selectedRoomType]);
+
+    const openCreate = () => {
+        setEditingPlan(null);
+        setFormData(EMPTY_FORM);
+        setSelectedRoomType('');
+        setVariants([]);
+        setIsModalOpen(true);
+    };
+
+    const openEdit = (plan) => {
+        setEditingPlan(plan);
+        // Pre-populate room type from populated variant
+        const rtId = plan.roomVariant?.roomType?._id || plan.roomVariant?.roomType || '';
+        setSelectedRoomType(rtId);
+        setFormData({
+            roomVariant: plan.roomVariant?._id || '',
+            ratePlan: plan.ratePlan?._id || plan.ratePlan || '',
+            planName: plan.planName,
+            adult1Price: plan.adult1Price,
+            adult2Price: plan.adult2Price,
+            extraAdultPrice: plan.extraAdultPrice,
+            childPrice: plan.childPrice,
+            mealsIncluded: plan.mealsIncluded
+        });
+        // fetch variants for the room type
+        if (rtId) {
+            api.get(`/rooms/variants/${rtId}`).then(r => setVariants(r.data)).catch(() => setVariants([]));
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleRatePlanChange = (planId) => {
+        const selected = ratePlans.find(rp => rp._id === planId);
+        if (selected) {
+            setFormData(prev => ({
+                ...prev,
+                ratePlan: planId,
+                planName: selected.name,
+                mealsIncluded: selected.inclusions
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, ratePlan: '' }));
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingPlan) {
+                await api.put(`/pricing/${editingPlan._id}`, formData);
+            } else {
+                await api.post('/pricing', formData);
+            }
+            setIsModalOpen(false);
+            fetchData();
+        } catch (error) {
+            alert('Operation failed. Please check all fields.');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Delete this pricing plan?')) return;
+        try {
+            await api.delete(`/pricing/${id}`);
+            fetchData();
+        } catch (error) { console.error(error); }
+    };
+
+    if (loading) return (
+        <div className="p-20 text-center">
+            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+    );
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500 text-left">
+            <header className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-black text-secondary lowercase capitalize tracking-tight">
+                        Yield <span className="text-emerald-600 italic">Management</span>
+                    </h1>
+                    <p className="text-xs text-slate-400 font-medium">
+                        Configure pricing plans per room variant · {plans.length} plans active
+                    </p>
+                </div>
+                <button
+                    onClick={openCreate}
+                    className="bg-secondary text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-slate-800 transition-all flex items-center gap-2"
+                >
+                    <Plus size={14} /> New Plan
+                </button>
+            </header>
+
+            {/* Plans Grid */}
+            {plans.length === 0 ? (
+                <div className="py-24 text-center text-slate-300">
+                    <Coffee size={40} className="mx-auto mb-4 opacity-40" />
+                    <p className="font-bold uppercase tracking-widest text-[10px]">No pricing plans configured yet.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                    {plans.map(plan => {
+                        const variantName = plan.roomVariant?.name || '—';
+                        const roomTypeName = plan.roomVariant?.roomType?.name || '—';
+                        return (
+                            <div key={plan._id} className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm relative group overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 active:scale-95">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125 duration-700" />
+                                <div className="flex justify-between items-start mb-6 relative z-10">
+                                    <div className="space-y-3">
+                                        <div className="flex gap-2 flex-wrap">
+                                            <span className="text-[7px] font-black text-emerald-600 uppercase tracking-[0.2em] bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100/50">
+                                                {roomTypeName}
+                                            </span>
+                                            <span className="text-[7px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
+                                                {variantName}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-3">
+                                                <h3 className="text-xl font-black text-secondary tracking-tighter leading-none lowercase">
+                                                    {plan.planName.split(' ')[0]} <span className="text-primary italic">{plan.planName.split(' ').slice(1).join(' ')}</span>
+                                                </h3>
+                                                {plan.ratePlan && (
+                                                    <span className="px-2 py-1 bg-secondary text-primary text-[7px] font-black uppercase tracking-[0.3em] rounded-lg shadow-sm">
+                                                        {plan.ratePlan.code}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{plan.mealsIncluded || 'Standard Occupancy'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+                                        <button onClick={() => openEdit(plan)} className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 rounded-xl flex items-center justify-center transition-all shadow-sm">
+                                            <Edit2 size={14} />
+                                        </button>
+                                        <button onClick={() => handleDelete(plan._id)} className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-rose-500 hover:border-rose-100 rounded-xl flex items-center justify-center transition-all shadow-sm">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-8 border-t border-slate-50 relative z-10">
+                                    {[
+                                        { label: 'Primary Node', value: `₹${plan.adult1Price}`, icon: '1P' },
+                                        { label: 'Dual Node', value: `₹${plan.adult2Price}`, icon: '2P' },
+                                        { label: 'Extra Agent', value: `₹${plan.extraAdultPrice}`, sub: 'Unit Cost', color: 'text-emerald-600' },
+                                        { label: 'Child Tier', value: `₹${plan.childPrice}`, sub: 'Unit Cost' },
+                                    ].map(({ label, value, sub, icon, color = 'text-secondary' }) => (
+                                        <div key={label} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-50/50 hover:bg-white hover:border-slate-100 transition-all">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <p className="text-[7px] font-black text-slate-300 uppercase tracking-widest leading-none">{label}</p>
+                                                {icon && <span className="text-[6px] font-black text-primary/40 leading-none">{icon}</span>}
+                                            </div>
+                                            <p className={`text-base font-black tracking-tighter tabular-nums ${color}`}>{value}</p>
+                                            {sub && <p className="text-[6px] font-bold text-slate-300 uppercase tracking-widest mt-1">{sub}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Create / Edit Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="absolute inset-0 bg-secondary/80 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
+                    <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-10 relative z-10 animate-in zoom-in-95 my-6">
+                        <button onClick={() => setIsModalOpen(false)} className="absolute right-8 top-8 text-slate-400 hover:text-secondary">
+                            <X size={20} />
+                        </button>
+                        <h2 className="text-2xl font-black text-secondary lowercase capitalize mb-8">
+                            {editingPlan ? 'Refine' : 'Architect'} <span className="text-emerald-600 italic">Rate Plan</span>
+                        </h2>
+
+                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            {/* Step 1: Room Type */}
+                            <div className="md:col-span-2 space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    1 · Select Room Type
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold outline-none appearance-none"
+                                        value={selectedRoomType}
+                                        onChange={e => {
+                                            setSelectedRoomType(e.target.value);
+                                            setFormData(f => ({ ...f, roomVariant: '' }));
+                                        }}
+                                    >
+                                        <option value="">Choose room type...</option>
+                                        {roomTypes.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Step 2: Variant */}
+                            <div className="md:col-span-2 space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    2 · Select Variant
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        required
+                                        disabled={!selectedRoomType || variants.length === 0}
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold outline-none appearance-none disabled:opacity-40"
+                                        value={formData.roomVariant}
+                                        onChange={e => setFormData(f => ({ ...f, roomVariant: e.target.value }))}
+                                    >
+                                        <option value="">{selectedRoomType ? (variants.length ? 'Choose variant...' : 'No variants found') : 'Select a room type first'}</option>
+                                        {variants.map(v => <option key={v._id} value={v._id}>{v.name}</option>)}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Step 3: Rate Plan (Global Strategy) */}
+                            <div className="md:col-span-2 space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    3 · Link Global Rate Strategy
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold outline-none appearance-none"
+                                        value={formData.ratePlan}
+                                        onChange={e => handleRatePlanChange(e.target.value)}
+                                    >
+                                        <option value="">Custom Plan (Manual Name)...</option>
+                                        {ratePlans.map(rp => (
+                                            <option key={rp._id} value={rp._id}>{rp.name} ({rp.code})</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            {/* Plan Name */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Plan Display Name</label>
+                                <input required placeholder="Room with Breakfast" className="w-full bg-white border border-slate-100 shadow-inner rounded-2xl px-5 py-4 text-xs font-bold outline-none"
+                                    value={formData.planName} onChange={e => setFormData(f => ({ ...f, planName: e.target.value }))} />
+                            </div>
+
+                            {/* Meals */}
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Meals Included</label>
+                                <input required placeholder="Breakfast Only / All Meals / None" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold outline-none"
+                                    value={formData.mealsIncluded} onChange={e => setFormData(f => ({ ...f, mealsIncluded: e.target.value }))} />
+                            </div>
+
+                            {/* Prices */}
+                            {[
+                                { label: '1 Adult Rate (₹)', key: 'adult1Price' },
+                                { label: '2 Adult Rate (₹)', key: 'adult2Price' },
+                                { label: 'Extra Adult Cost (₹)', key: 'extraAdultPrice' },
+                                { label: 'Per Child Cost (₹)', key: 'childPrice' },
+                            ].map(({ label, key }) => (
+                                <div key={key} className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+                                    <input type="number" required min="0"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold font-mono outline-none"
+                                        value={formData[key]}
+                                        onChange={e => setFormData(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
+                                </div>
+                            ))}
+
+                            <div className="md:col-span-2 pt-4">
+                                <button type="submit"
+                                    className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-emerald-600/20 active:scale-95 transition-all hover:bg-emerald-700">
+                                    {editingPlan ? 'Update Plan' : 'Create Plan'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default PricingMgmt;

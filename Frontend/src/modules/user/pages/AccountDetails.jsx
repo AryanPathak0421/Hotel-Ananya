@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, MapPin, Camera, ChevronLeft, Shield, CheckCircle2, Save, X } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 
+import api from '../../../services/api';
+
 const Field = ({ icon: Icon, label, value, editing, field, formData, onChange, verified, disabled }) => (
     <div className="space-y-1.5">
         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -28,26 +30,46 @@ const Field = ({ icon: Icon, label, value, editing, field, formData, onChange, v
 );
 
 const AccountDetails = () => {
-    const { user } = useAuth();
+    const { user, updateProfile } = useAuth();
     const navigate = useNavigate();
     const [isEditing, setIsEditing] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
     const [notifications, setNotifications] = useState(true);
+
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        phone: '+91 98765 43210',
-        address: 'Kolkata, West Bengal',
+        mobile: user?.mobile || '',
+        city: user?.city || '',
+        country: user?.country || '',
     });
 
     if (!user) { navigate('/login'); return null; }
 
     const handleChange = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
 
-    const handleSave = () => {
-        setSaved(true);
-        setIsEditing(false);
-        setTimeout(() => setSaved(false), 2500);
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            const { data } = await api.put(`/users/${user._id}`, {
+                name: formData.name,
+                mobile: formData.mobile,
+                city: formData.city,
+                country: formData.country
+            });
+
+            // Sync with Context / LocalStorage
+            updateProfile(data);
+
+            setSaved(true);
+            setIsEditing(false);
+            setTimeout(() => setSaved(false), 2500);
+        } catch (error) {
+            alert(error.response?.data?.message || 'Update failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -69,9 +91,9 @@ const AccountDetails = () => {
                                 className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors active:scale-90">
                                 <X size={16} />
                             </button>
-                            <button onClick={handleSave}
-                                className="flex items-center gap-1.5 bg-primary text-secondary px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-90 transition-all">
-                                <Save size={13} /> Save
+                            <button onClick={handleSave} disabled={loading}
+                                className={`flex items-center gap-1.5 bg-primary text-secondary px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-90 transition-all ${loading ? 'opacity-50' : ''}`}>
+                                <Save size={13} /> {loading ? 'Saving...' : 'Save'}
                             </button>
                         </div>
                     ) : (
@@ -91,25 +113,25 @@ const AccountDetails = () => {
 
             <div className="max-w-xl mx-auto px-4 pt-5 space-y-4">
                 {/* Avatar Card */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="h-24 bg-secondary relative overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm relative">
+                    <div className="h-28 bg-secondary relative overflow-hidden rounded-t-2xl">
                         <div className="absolute inset-0 opacity-20"
                             style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #c9a84c 0%, transparent 50%)' }} />
                     </div>
-                    <div className="px-6 pb-6 -mt-10">
-                        <div className="flex items-end justify-between">
+                    <div className="px-6 pb-6 -mt-8 relative z-10">
+                        <div className="flex items-center justify-between gap-4">
                             <div className="relative">
-                                <div className="w-20 h-20 bg-white rounded-2xl shadow-xl border-2 border-slate-100 flex items-center justify-center text-primary font-serif text-3xl font-black">
-                                    {user.name[0]}
+                                <div className="w-20 h-20 bg-white rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center text-primary font-serif text-3xl font-black uppercase overflow-hidden">
+                                    {user.profilePicture ? <img src={user.profilePicture} className="w-full h-full object-cover" alt="" /> : user.name[0]}
                                 </div>
                                 <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform active:scale-90">
                                     <Camera size={13} />
                                 </button>
                             </div>
-                            <div className="mb-2 text-right">
-                                <h2 className="text-secondary font-bold text-base">{formData.name}</h2>
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-[9px] font-black uppercase tracking-widest">
-                                    <Shield size={9} /> Verified {user.role}
+                            <div className="mt-8 text-right flex flex-col items-end gap-1.5">
+                                <h2 className="text-secondary font-bold text-lg leading-tight">{formData.name}</h2>
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100/50">
+                                    <Shield size={10} className="fill-emerald-700/10 text-emerald-600" /> Verified {user.role}
                                 </span>
                             </div>
                         </div>
@@ -123,8 +145,11 @@ const AccountDetails = () => {
                     </h2>
                     <Field icon={User} label="Full Name" field="name" formData={formData} editing={isEditing} onChange={handleChange} />
                     <Field icon={Mail} label="Email Address" field="email" value={user.email} formData={formData} editing={isEditing} onChange={handleChange} verified disabled />
-                    <Field icon={Phone} label="Phone Number" field="phone" formData={formData} editing={isEditing} onChange={handleChange} />
-                    <Field icon={MapPin} label="Home Address" field="address" formData={formData} editing={isEditing} onChange={handleChange} />
+                    <Field icon={Phone} label="Phone Number" field="mobile" formData={formData} editing={isEditing} onChange={handleChange} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Field icon={MapPin} label="City" field="city" formData={formData} editing={isEditing} onChange={handleChange} />
+                        <Field icon={MapPin} label="Country" field="country" formData={formData} editing={isEditing} onChange={handleChange} />
+                    </div>
                 </div>
 
                 {/* Preferences */}

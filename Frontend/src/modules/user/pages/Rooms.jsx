@@ -1,84 +1,79 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { roomCategories } from '../../../utils/roomData';
+import api from '../../../services/api';
 import { Star, Wifi, Wind, Coffee, Tv, Maximize2, BedDouble, Users, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
 
 const amenityIcons = { 'Free WiFi': Wifi, 'Split AC': Wind, 'Electric Kettle': Coffee, 'Flat TV': Tv };
 
 const RoomCard = ({ room, onBook }) => (
-    <div className="bg-white rounded-3xl overflow-hidden shadow-md border border-slate-100 hover:shadow-2xl transition-all duration-500 group">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-500 group">
         {/* Image */}
-        <div className="relative h-52 overflow-hidden">
-            <img src={room.image} alt={room.type} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-secondary/60 via-transparent to-transparent" />
+        <div className="relative h-44 overflow-hidden">
+            <img src={room.images?.[0]} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+            <div className="absolute inset-0 bg-gradient-to-t from-secondary/50 via-transparent to-transparent" />
 
             {/* Top badges */}
-            <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-                <span className="bg-primary text-secondary text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">Luxury</span>
-                <div className="flex items-center gap-1 bg-secondary/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                    <Star size={9} className="text-amber-400" fill="currentColor" />
-                    <span className="text-white text-[9px] font-black">4.9</span>
+            <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
+                <span className="bg-primary text-secondary text-[7px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest">Luxury Suite</span>
+                <div className="flex items-center gap-1 bg-secondary/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10">
+                    <Star size={8} className="text-amber-400" fill="currentColor" />
+                    <span className="text-white text-[8px] font-bold">4.9</span>
                 </div>
             </div>
 
             {/* Bottom info */}
-            <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+            <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                 <div>
-                    <h3 className="text-white font-serif text-xl leading-tight">{room.type}</h3>
-                    <div className="flex items-center gap-2 mt-1">
+                    <h3 className="text-white font-serif text-lg leading-tight uppercase">{room.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
                         {[
                             { icon: Maximize2, label: room.size },
-                            { icon: BedDouble, label: room.bed },
+                            { icon: BedDouble, label: room.bedType },
                         ].map(({ icon: Icon, label }) => (
                             <div key={label} className="flex items-center gap-1">
-                                <Icon size={9} className="text-white/60" />
-                                <span className="text-white/70 text-[9px] font-medium">{label}</span>
+                                <Icon size={8} className="text-white/60" />
+                                <span className="text-white/70 text-[8px] font-medium">{label}</span>
                             </div>
                         ))}
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-primary font-black text-xl">₹{room.price.toLocaleString()}</p>
-                    <p className="text-white/50 text-[8px] uppercase tracking-widest">/ Night</p>
+                    <p className="text-primary font-bold text-lg">₹{(room.startingPrice || 0).toLocaleString()}</p>
+                    <p className="text-white/40 text-[7px] uppercase tracking-widest leading-none">/ Starting</p>
                 </div>
             </div>
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-4">
+        <div className="p-4 space-y-3 font-sans">
             {/* Capacity */}
             <div className="flex items-center gap-2 text-slate-400">
-                <Users size={13} className="text-primary" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{room.capacity}</span>
+                <Users size={12} className="text-primary" />
+                <span className="text-[9px] font-bold uppercase tracking-wider">{room.capacity} pax</span>
                 <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{room.count} rooms available</span>
+                <span className="text-[9px] font-bold uppercase tracking-wider">{room.totalRooms} keys available</span>
             </div>
 
             {/* Amenities */}
-            <div className="flex flex-wrap gap-2">
-                {room.amenities.slice(0, 4).map(amenity => {
+            <div className="flex flex-wrap gap-1.5">
+                {room.amenities?.slice(0, 4).map(amenity => {
                     const Icon = amenityIcons[amenity] || ChevronRight;
                     return (
-                        <div key={amenity} className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full">
-                            <Icon size={10} className="text-primary" />
-                            <span className="text-[9px] font-bold text-secondary">{amenity}</span>
+                        <div key={amenity} className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
+                            <Icon size={9} className="text-primary" />
+                            <span className="text-[8px] font-bold text-secondary uppercase tracking-tighter">{amenity}</span>
                         </div>
                     );
                 })}
-                {room.amenities.length > 4 && (
-                    <div className="flex items-center bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-full">
-                        <span className="text-[9px] font-bold text-slate-400">+{room.amenities.length - 4} more</span>
-                    </div>
-                )}
             </div>
 
-            <p className="text-slate-400 text-xs leading-relaxed font-light">
-                Experience the perfect blend of coastal serenity and modern luxury. Designed with an eye for every detail.
+            <p className="text-slate-400 text-[10px] leading-relaxed font-medium italic pr-2">
+                "Experience the pinnacle of boutique hospitality. Elegantly curated for your comfort."
             </p>
 
             <button onClick={() => onBook(room)}
-                className="w-full bg-secondary text-white py-4 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-secondary/20 hover:bg-primary transition-all active:scale-95 flex items-center justify-center gap-2">
-                Check Availability <ChevronRight size={16} />
+                className="w-full bg-secondary text-white py-3 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-primary transition-all active:scale-95 flex items-center justify-center gap-2">
+                Explore Variants <ChevronRight size={12} />
             </button>
         </div>
     </div>
@@ -88,17 +83,38 @@ const Rooms = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [search, setSearch] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const { data } = await api.get('/rooms');
+                setCategories(data);
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         if (location.state?.initialSearch) {
             setSearch(location.state.initialSearch);
-            // Clear state so it doesn't persist on refresh if needed
             window.history.replaceState({}, document.title);
         }
     }, [location.state]);
 
-    const filtered = roomCategories.filter(r =>
-        r.type.toLowerCase().includes(search.toLowerCase())
+    const filtered = categories.filter(r =>
+        r.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    if (loading) return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
     );
 
     return (
@@ -107,13 +123,13 @@ const Rooms = () => {
             <div className="bg-secondary relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10"
                     style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #c9a84c 0%, transparent 40%), radial-gradient(circle at 80% 10%, #c9a84c 0%, transparent 40%)' }} />
-                <div className="relative z-10 px-6 pt-8 pb-1">
-                    <span className="text-primary text-[8px] font-black uppercase tracking-[0.5em]">Exclusive Living</span>
-                    <h1 className="text-3xl font-serif text-white mt-2 lowercase leading-tight">
+                <div className="relative z-10 px-6 pt-6 pb-2">
+                    <span className="text-primary text-[7px] font-bold uppercase tracking-[0.5em]">Exclusive Living</span>
+                    <h1 className="text-2xl font-serif text-white mt-1 lowercase leading-tight">
                         Our <span className="text-primary italic">Sanctuaries.</span>
                     </h1>
-                    <p className="text-white/50 text-xs mt-3 font-medium leading-relaxed max-w-sm">
-                        46 boutique rooms where coastal charm meets modern comfort. Crafted for those who seek the sublime.
+                    <p className="text-white/40 text-[10px] mt-2 font-medium leading-relaxed max-w-xs">
+                        Boutique suites where coastal charm meets modern comfort. Crafted for those who seek the sublime.
                     </p>
                 </div>
             </div>
@@ -140,8 +156,8 @@ const Rooms = () => {
                 </div>
 
                 {/* Count */}
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-5">
-                    {filtered.length} Room Type{filtered.length !== 1 ? 's' : ''} Available
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+                    {filtered.length} Suite{filtered.length !== 1 ? 's' : ''} Identified
                 </p>
 
                 {/* Cards */}

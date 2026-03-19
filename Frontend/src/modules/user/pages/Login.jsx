@@ -20,27 +20,25 @@ const Login = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
-        await new Promise(r => setTimeout(r, 600));
 
-        if (email === 'user@ananya.com' && password === 'user123') {
-            login({ name: 'Guest User', email, role: 'user' });
+        const result = await login(email, password);
+
+        if (result.success) {
             navigate('/');
-        } else if (email === 'admin@ananya.com') {
-            setError('This is the Guest Login. Please use the Admin Portal for staff access.');
         } else {
-            setError('Invalid credentials. If you are new, please create an account.');
+            setError(result.message);
         }
         setLoading(false);
     };
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-12">
-            {/* Brand */}
-            <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-serif text-xl italic shadow-lg shadow-primary/30">a</div>
-                <div>
-                    <p className="text-[9px] font-black tracking-[0.4em] text-secondary uppercase">Ananya</p>
-                    <p className="text-[7px] font-bold text-primary tracking-widest uppercase">Luxury Hotels</p>
+            {/* Brand Logo Above Card */}
+            <div className="flex flex-col items-center mb-10 transition-all duration-700 animate-in fade-in slide-in-from-top-6">
+                <img src="/logo.png" alt="Ananya Hotel" className="h-20 w-auto drop-shadow-2xl" />
+                <div className="mt-2 text-center">
+                    <p className="text-[10px] font-black tracking-[0.6em] text-secondary uppercase">Ananya</p>
+                    <p className="text-[7px] font-bold text-primary tracking-[0.3em] uppercase opacity-60">Hotel & Spa</p>
                 </div>
             </div>
 
