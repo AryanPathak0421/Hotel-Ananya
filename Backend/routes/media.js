@@ -1,8 +1,23 @@
 import express from 'express';
-import { upload, cloudinary } from '../config/cloudinary.js';
+import { upload, uploadToCloudinary, cloudinary } from '../config/cloudinary.js';
 import Media from '../models/Media.js';
 
 const router = express.Router();
+// Upload a single file and return URL (for profile pictures, etc)
+router.post('/upload-single', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No image uploaded' });
+        }
+
+        // Manual upload via stream
+        const result = await uploadToCloudinary(req.file.buffer, 'profiles');
+        res.json({ imageUrl: result.secure_url, publicId: result.public_id });
+    } catch (error) {
+        console.error('Single Upload Error Full Detail:', error);
+        res.status(500).json({ message: 'Error uploading image', details: error.message });
+    }
+});
 
 // Get all media of a specific type
 router.get('/:type', async (req, res) => {
@@ -16,7 +31,7 @@ router.get('/:type', async (req, res) => {
 });
 
 // Upload media
-router.post('/upload', upload('media').single('image'), async (req, res) => {
+router.post('/upload', upload.single('image'), async (req, res) => {
     try {
         const { type, title, subtext, category } = req.body;
 
@@ -24,9 +39,11 @@ router.post('/upload', upload('media').single('image'), async (req, res) => {
             return res.status(400).json({ message: 'No image uploaded' });
         }
 
+        const result = await uploadToCloudinary(req.file.buffer, 'media');
+
         const newMedia = await Media.create({
-            imageUrl: req.file.path,
-            publicId: req.file.filename,
+            imageUrl: result.secure_url,
+            publicId: result.public_id,
             type,
             title,
             subtext,

@@ -29,6 +29,7 @@ router.put('/:id', async (req, res) => {
             // Optional admin updates
             user.role = req.body.role || user.role;
             user.walletBalance = req.body.walletBalance !== undefined ? req.body.walletBalance : user.walletBalance;
+            user.status = req.body.status || user.status;
 
             const updatedUser = await user.save();
             res.json(updatedUser);

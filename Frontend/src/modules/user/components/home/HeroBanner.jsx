@@ -48,14 +48,14 @@ const HeroBanner = () => {
     }, [banners]);
 
     if (loading) return (
-        <div className="h-40 bg-secondary animate-pulse flex items-center justify-center">
+        <div className="h-56 bg-secondary animate-pulse flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
     return (
         <section className="pt-0 overflow-hidden">
-            <div className="relative h-40 bg-secondary shadow-lg">
+            <div className="relative h-56 bg-secondary shadow-lg">
                 {banners.map((slide, index) => (
                     <div
                         key={index}

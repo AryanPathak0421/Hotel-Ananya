@@ -8,7 +8,8 @@ const pricingSchema = new mongoose.Schema({
     adult2Price: { type: Number, required: true },
     extraAdultPrice: { type: Number, required: true },
     childPrice: { type: Number, required: true },
-    mealsIncluded: { type: String, required: true }
+    mealsIncluded: { type: String, required: true },
+    planImage: { type: String }
 }, { timestamps: true });
 
 const Pricing = mongoose.model('Pricing', pricingSchema);

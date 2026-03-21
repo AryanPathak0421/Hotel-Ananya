@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Phone, Mail, Send, Clock, CheckCircle2, Instagram, Facebook, Twitter, ExternalLink } from 'lucide-react';
+import api from '../../../services/api';
+import { useAuth } from '../../../context/AuthContext';
 
 const contactInfo = [
     {
@@ -29,16 +31,33 @@ const contactInfo = [
 const SUBJECTS = ['Room Booking Inquiry', 'Restaurant Reservation', 'Special Event / Wedding', 'Spa Appointment', 'General Support', 'Feedback'];
 
 const Contact = () => {
-    const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', subject: SUBJECTS[0], message: '' });
+    const { user } = useAuth();
+    const [form, setForm] = useState({
+        firstName: '',
+        lastName: '',
+        email: user?.email || '',
+        phone: user?.mobile || '',
+        subject: SUBJECTS[0],
+        message: ''
+    });
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        await new Promise(r => setTimeout(r, 1000));
-        setSubmitted(true);
-        setLoading(false);
+        try {
+            await api.post('/messages', {
+                ...form,
+                userId: user?._id
+            });
+            setSubmitted(true);
+        } catch (error) {
+            console.error('Submit Error:', error);
+            alert('Failed to send message. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleChange = (f, v) => setForm(prev => ({ ...prev, [f]: v }));

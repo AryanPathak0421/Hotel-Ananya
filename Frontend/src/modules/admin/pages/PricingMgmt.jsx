@@ -3,7 +3,7 @@ import api from '../../../services/api';
 import { Plus, Edit2, Trash2, X, Coffee, ChevronDown } from 'lucide-react';
 
 const EMPTY_FORM = {
-    roomVariant: '', ratePlan: '', planName: '', adult1Price: 0, adult2Price: 0, extraAdultPrice: 0, childPrice: 0, mealsIncluded: ''
+    roomVariant: '', ratePlan: '', planName: '', adult1Price: 0, adult2Price: 0, extraAdultPrice: 0, childPrice: 0, mealsIncluded: '', planImage: ''
 };
 
 const PricingMgmt = () => {
@@ -16,6 +16,7 @@ const PricingMgmt = () => {
     const [editingPlan, setEditingPlan] = useState(null);
     const [selectedRoomType, setSelectedRoomType] = useState('');
     const [formData, setFormData] = useState(EMPTY_FORM);
+    const [uploading, setUploading] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -65,7 +66,8 @@ const PricingMgmt = () => {
             adult2Price: plan.adult2Price,
             extraAdultPrice: plan.extraAdultPrice,
             childPrice: plan.childPrice,
-            mealsIncluded: plan.mealsIncluded
+            mealsIncluded: plan.mealsIncluded,
+            planImage: plan.planImage || ''
         });
         // fetch variants for the room type
         if (rtId) {
@@ -85,6 +87,22 @@ const PricingMgmt = () => {
             }));
         } else {
             setFormData(prev => ({ ...prev, ratePlan: '' }));
+        }
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        const form = new FormData();
+        form.append('image', file);
+        try {
+            const { data } = await api.post('/media/upload-single', form);
+            setFormData(f => ({ ...f, planImage: data.imageUrl }));
+        } catch (error) {
+            alert('Image upload failed');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -118,21 +136,21 @@ const PricingMgmt = () => {
     );
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 text-left">
-            <header className="flex justify-between items-center">
+        <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 text-left">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-secondary lowercase capitalize tracking-tight">
+                    <h1 className="text-xl lg:text-2xl font-black text-secondary lowercase capitalize tracking-tight leading-none mb-1">
                         Yield <span className="text-emerald-600 italic">Management</span>
                     </h1>
-                    <p className="text-xs text-slate-400 font-medium">
+                    <p className="text-[10px] lg:text-xs text-slate-400 font-medium">
                         Configure pricing plans per room variant · {plans.length} plans active
                     </p>
                 </div>
                 <button
                     onClick={openCreate}
-                    className="bg-secondary text-white px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-slate-800 transition-all flex items-center gap-2"
+                    className="w-full sm:w-auto bg-secondary text-white px-6 lg:px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[9px] lg:text-[10px] shadow-xl hover:shadow-secondary/20 transition-all flex items-center justify-center gap-2 group active:scale-95"
                 >
-                    <Plus size={14} /> New Plan
+                    <Plus size={14} className="group-hover:rotate-90 transition-transform" /> New Plan
                 </button>
             </header>
 
@@ -143,64 +161,63 @@ const PricingMgmt = () => {
                     <p className="font-bold uppercase tracking-widest text-[10px]">No pricing plans configured yet.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
                     {plans.map(plan => {
                         const variantName = plan.roomVariant?.name || '—';
                         const roomTypeName = plan.roomVariant?.roomType?.name || '—';
                         return (
-                            <div key={plan._id} className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm relative group overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 active:scale-95">
+                            <div key={plan._id} className="bg-white rounded-[2rem] lg:rounded-[3rem] p-6 lg:p-10 border border-slate-100 shadow-sm relative group overflow-hidden hover:shadow-2xl transition-all duration-500 md:hover:-translate-y-1 active:scale-95">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-125 duration-700" />
-                                <div className="flex justify-between items-start mb-6 relative z-10">
-                                    <div className="space-y-3">
-                                        <div className="flex gap-2 flex-wrap">
-                                            <span className="text-[7px] font-black text-emerald-600 uppercase tracking-[0.2em] bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100/50">
+                                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 relative z-10">
+                                    <div className="space-y-3 flex-grow min-w-0">
+                                        <div className="flex gap-1.5 lg:gap-2 flex-wrap">
+                                            <span className="text-[6px] lg:text-[7px] font-black text-emerald-600 uppercase tracking-[0.2em] bg-emerald-50 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg lg:rounded-xl border border-emerald-100/50 truncate max-w-[150px]">
                                                 {roomTypeName}
                                             </span>
-                                            <span className="text-[7px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
+                                            <span className="text-[6px] lg:text-[7px] font-black text-primary uppercase tracking-[0.2em] bg-primary/5 px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg lg:rounded-xl border border-primary/10 truncate max-w-[150px]">
                                                 {variantName}
                                             </span>
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-3">
-                                                <h3 className="text-xl font-black text-secondary tracking-tighter leading-none lowercase">
+                                                <h3 className="text-lg lg:text-xl font-black text-secondary tracking-tighter leading-none lowercase truncate">
                                                     {plan.planName.split(' ')[0]} <span className="text-primary italic">{plan.planName.split(' ').slice(1).join(' ')}</span>
                                                 </h3>
                                                 {plan.ratePlan && (
-                                                    <span className="px-2 py-1 bg-secondary text-primary text-[7px] font-black uppercase tracking-[0.3em] rounded-lg shadow-sm">
+                                                    <span className="px-1.5 py-0.5 bg-secondary text-primary text-[6px] lg:text-[7px] font-black uppercase tracking-[0.3em] rounded shadow-sm shrink-0">
                                                         {plan.ratePlan.code}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 mt-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{plan.mealsIncluded || 'Standard Occupancy'}</p>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                                                <p className="text-[7px] lg:text-[8px] text-slate-400 font-bold uppercase tracking-widest line-clamp-1">{plan.mealsIncluded || 'Standard Occupancy'}</p>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-                                        <button onClick={() => openEdit(plan)} className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 rounded-xl flex items-center justify-center transition-all shadow-sm">
+                                    <div className="flex sm:flex-col gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 sm:translate-x-4 sm:group-hover:translate-x-0 w-full sm:w-auto">
+                                        <button onClick={() => openEdit(plan)} className="flex-1 sm:w-10 sm:h-10 bg-white border border-slate-100 text-slate-400 hover:text-emerald-600 hover:border-emerald-100 rounded-xl flex items-center justify-center p-2.5 sm:p-0 transition-all shadow-sm">
                                             <Edit2 size={14} />
                                         </button>
-                                        <button onClick={() => handleDelete(plan._id)} className="w-10 h-10 bg-white border border-slate-100 text-slate-400 hover:text-rose-500 hover:border-rose-100 rounded-xl flex items-center justify-center transition-all shadow-sm">
+                                        <button onClick={() => handleDelete(plan._id)} className="flex-1 sm:w-10 sm:h-10 bg-white border border-slate-100 text-slate-400 hover:text-rose-500 hover:border-rose-100 rounded-xl flex items-center justify-center p-2.5 sm:p-0 transition-all shadow-sm">
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 pt-8 border-t border-slate-50 relative z-10">
+                                <div className="grid grid-cols-2 gap-3 lg:gap-4 pt-6 lg:pt-8 border-t border-slate-50 relative z-10">
                                     {[
-                                        { label: 'Primary Node', value: `₹${plan.adult1Price}`, icon: '1P' },
-                                        { label: 'Dual Node', value: `₹${plan.adult2Price}`, icon: '2P' },
-                                        { label: 'Extra Agent', value: `₹${plan.extraAdultPrice}`, sub: 'Unit Cost', color: 'text-emerald-600' },
-                                        { label: 'Child Tier', value: `₹${plan.childPrice}`, sub: 'Unit Cost' },
-                                    ].map(({ label, value, sub, icon, color = 'text-secondary' }) => (
-                                        <div key={label} className="bg-slate-50/50 p-4 rounded-2xl border border-slate-50/50 hover:bg-white hover:border-slate-100 transition-all">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <p className="text-[7px] font-black text-slate-300 uppercase tracking-widest leading-none">{label}</p>
-                                                {icon && <span className="text-[6px] font-black text-primary/40 leading-none">{icon}</span>}
+                                        { label: 'Primary', value: `₹${plan.adult1Price}`, icon: '1P' },
+                                        { label: 'Dual', value: `₹${plan.adult2Price}`, icon: '2P' },
+                                        { label: 'Extra', value: `₹${plan.extraAdultPrice}`, color: 'text-emerald-600' },
+                                        { label: 'Child', value: `₹${plan.childPrice}` },
+                                    ].map(({ label, value, icon, color = 'text-secondary' }) => (
+                                        <div key={label} className="bg-slate-50/50 p-3 lg:p-4 rounded-xl lg:rounded-2xl border border-slate-50/50 hover:bg-white hover:border-slate-100 transition-all">
+                                            <div className="flex justify-between items-start mb-1 lg:mb-2">
+                                                <p className="text-[6px] lg:text-[7px] font-black text-slate-300 uppercase tracking-widest leading-none">{label}</p>
+                                                {icon && <span className="hidden sm:block text-[6px] font-black text-primary/40 leading-none">{icon}</span>}
                                             </div>
-                                            <p className={`text-base font-black tracking-tighter tabular-nums ${color}`}>{value}</p>
-                                            {sub && <p className="text-[6px] font-bold text-slate-300 uppercase tracking-widest mt-1">{sub}</p>}
+                                            <p className={`text-xs lg:text-base font-black tracking-tighter tabular-nums ${color}`}>{value}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -212,17 +229,17 @@ const PricingMgmt = () => {
 
             {/* Create / Edit Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-secondary/80 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
-                    <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-10 relative z-10 animate-in zoom-in-95 my-6">
-                        <button onClick={() => setIsModalOpen(false)} className="absolute right-8 top-8 text-slate-400 hover:text-secondary">
+                    <div className="bg-white w-full max-w-2xl rounded-[2rem] lg:rounded-[2.5rem] p-6 lg:p-10 relative z-10 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <button onClick={() => setIsModalOpen(false)} className="absolute right-6 top-6 lg:right-8 lg:top-8 text-slate-400 hover:text-secondary p-2 bg-slate-50 rounded-lg lg:bg-transparent">
                             <X size={20} />
                         </button>
-                        <h2 className="text-2xl font-black text-secondary lowercase capitalize mb-8">
+                        <h2 className="text-xl lg:text-2xl font-black text-secondary lowercase capitalize mb-6 lg:mb-8 pr-12">
                             {editingPlan ? 'Refine' : 'Architect'} <span className="text-emerald-600 italic">Rate Plan</span>
                         </h2>
 
-                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
 
                             {/* Step 1: Room Type */}
                             <div className="md:col-span-2 space-y-2">
@@ -315,6 +332,28 @@ const PricingMgmt = () => {
                                         onChange={e => setFormData(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
                                 </div>
                             ))}
+
+                            {/* Plan Image */}
+                            <div className="md:col-span-2 space-y-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                                <label className="text-[9px] font-black text-slate-400 upper-case tracking-widest block">Digital Asset (Card Image)</label>
+                                <div className="flex items-center gap-6">
+                                    <div className="w-24 h-24 bg-white rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center relative group">
+                                        {formData.planImage ? (
+                                            <img src={formData.planImage} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="text-[10px] font-black text-slate-200 uppercase">Empty</div>
+                                        )}
+                                        {uploading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="plan-img-upload" />
+                                        <label htmlFor="plan-img-upload" className="inline-block bg-white border border-slate-200 px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest cursor-pointer hover:border-primary/30 transition-all">
+                                            {uploading ? 'Processing...' : 'Change Asset'}
+                                        </label>
+                                        <p className="text-[8px] text-slate-400 mt-2">Recommended: 800x600 · Cloudinary Secured</p>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="md:col-span-2 pt-4">
                                 <button type="submit"

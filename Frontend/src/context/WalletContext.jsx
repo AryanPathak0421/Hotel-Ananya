@@ -70,7 +70,7 @@ export const WalletProvider = ({ children }) => {
     };
 
     return (
-        <WalletContext.Provider value={{ balance, transactions, coupons, addFunds, deductFunds }}>
+        <WalletContext.Provider value={{ balance, transactions, coupons, addFunds, deductFunds, verifyAndAddFunds }}>
             {children}
         </WalletContext.Provider>
     );

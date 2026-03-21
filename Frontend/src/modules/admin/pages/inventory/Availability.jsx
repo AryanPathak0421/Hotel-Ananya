@@ -1,141 +1,409 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../../../services/api';
-import { Calendar, ChevronLeft, ChevronRight, Check, X, AlertCircle } from 'lucide-react';
+import {
+    ChevronLeft, ChevronRight, Search, Home, Ban, Copy, ChevronDown, Check, Save, Zap, AlertCircle, X, Loader2, Calendar
+} from 'lucide-react';
 
 const Availability = () => {
-    const [categories, setCategories] = useState([]);
+    const [roomTypes, setRoomTypes] = useState([]);
+    const [dates, setDates] = useState([]);
+    const [matrix, setMatrix] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState(new Date());
+    const [saving, setSaving] = useState(false);
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedRT, setSelectedRT] = useState('all');
+    const [pendingUpdates, setPendingUpdates] = useState({});
 
-    const dates = Array.from({ length: 14 }, (_, i) => {
-        const d = new Date(startDate);
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + i);
-        return d;
+    // Bulk Update State
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkForm, setBulkForm] = useState({
+        variantId: '',
+        fromDate: new Date().toISOString().split('T')[0],
+        toDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        roomsToSell: '',
+        isStopSell: false,
+        days: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true }
     });
 
-    useEffect(() => {
-        const fetchAvailability = async () => {
-            setLoading(true);
-            try {
-                const { data } = await api.get(`/rooms/availability-matrix?startDate=${startDate.toISOString()}`);
-                setCategories(data);
-            } catch (error) {
-                console.error('Error fetching availability:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchAvailability();
-    }, [startDate]);
-
-    const navigateDate = (days) => {
-        const nextDate = new Date(startDate);
-        nextDate.setDate(startDate.getDate() + days);
-        setStartDate(nextDate);
+    const fetchData = async (s = startDate) => {
+        setLoading(true);
+        try {
+            const { data } = await api.get(`/inventory/matrix?startDate=${s}&roomTypeId=${selectedRT}`);
+            setDates(data.dates);
+            setMatrix(data.matrix);
+            setPendingUpdates({});
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const [hoveredCell, setHoveredCell] = useState(null);
+    useEffect(() => {
+        api.get('/rooms').then(res => setRoomTypes(res.data)).catch(console.error);
+        fetchData();
+    }, []);
 
-    if (loading) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
+    const navigateDate = (days) => {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + days);
+        const newD = d.toISOString().split('T')[0];
+        setStartDate(newD);
+        fetchData(newD);
+    };
+
+    const updateCell = (variantId, date, field, value) => {
+        const key = `${variantId}-${date}`;
+        setPendingUpdates(prev => ({
+            ...prev,
+            [key]: {
+                ...(prev[key] || {
+                    variantId,
+                    date,
+                    roomsToSell: matrix.find(m => m._id === variantId).availability.find(a => a.date === date).roomsToSell,
+                    isStopSell: matrix.find(m => m._id === variantId).availability.find(a => a.date === date).isStopSell
+                }),
+                [field]: value
+            }
+        }));
+
+        setMatrix(prev => prev.map(m => {
+            if (m._id !== variantId) return m;
+            return {
+                ...m,
+                availability: m.availability.map(a => {
+                    if (a.date !== date) return a;
+                    return { ...a, [field]: value };
+                })
+            };
+        }));
+    };
+
+    const handleCopyAvailability = (variantId) => {
+        const row = matrix.find(m => m._id === variantId);
+        if (!row) return;
+        const firstVal = row.availability[0].roomsToSell;
+        row.availability.forEach(a => {
+            updateCell(variantId, a.date, 'roomsToSell', firstVal);
+        });
+    };
+
+    const handleStopSellAll = (variantId, checked) => {
+        const row = matrix.find(m => m._id === variantId);
+        if (!row) return;
+        row.availability.forEach(a => {
+            updateCell(variantId, a.date, 'isStopSell', checked);
+        });
+    };
+
+    const updateTotalRooms = async (variantId, newTotal) => {
+        setSaving(true);
+        try {
+            await api.put(`/rooms/variants/${variantId}`, { totalRooms: newTotal });
+            setMatrix(prev => prev.map(m => m._id === variantId ? { ...m, totalRooms: newTotal } : m));
+        } catch (e) {
+            alert('Failed to update base capacity');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleBulkUpdate = async () => {
+        if (!bulkForm.variantId || bulkForm.variantId === 'all') return alert('Please select a room type.');
+        setSaving(true);
+        try {
+            const payload = {
+                variantId: bulkForm.variantId,
+                fromDate: bulkForm.fromDate,
+                toDate: bulkForm.toDate,
+                selectedDays: bulkForm.days,
+                updates: {}
+            };
+            if (bulkForm.roomsToSell !== '') payload.updates.roomsToSell = parseInt(bulkForm.roomsToSell);
+            if (bulkForm.isStopSell) payload.updates.isStopSell = true;
+
+            await api.post('/inventory/bulk-update', payload);
+            alert('Bulk update successful');
+            setShowBulkModal(false);
+            fetchData();
+        } catch (e) {
+            alert('Bulk update failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSaveMatrix = async () => {
+        const updates = Object.values(pendingUpdates);
+        if (updates.length === 0) return alert('No changes detected.');
+
+        setSaving(true);
+        try {
+            await api.post('/inventory/save-batch', { updates });
+            alert('Inventory saved');
+            setPendingUpdates({});
+        } catch (error) {
+            const msg = error.response?.data?.error || error.response?.data?.message || error.message;
+            alert('Save failed: ' + msg);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading && matrix.length === 0) return (
+        <div className="p-20 text-center"><Loader2 className="w-10 h-10 text-teal-500 animate-spin mx-auto" /></div>
     );
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-secondary">Inventory Grid & Flow</h1>
-                    <p className="text-sm text-slate-500 font-medium">Monitoring inventory flow from {startDate.toLocaleDateString()} for 14 operational cycles.</p>
+        <div className="space-y-8 animate-in fade-in duration-500 text-left pb-20 overflow-hidden relative">
+            {saving && (
+                <div className="fixed inset-0 z-[300] bg-white/40 backdrop-blur-[2px] flex items-center justify-center">
+                    <div className="bg-secondary text-white px-8 py-4 rounded-2xl flex items-center gap-4 shadow-2xl animate-in zoom-in-95">
+                        <Loader2 className="animate-spin" size={20} />
+                        <span className="text-xs font-black uppercase tracking-widest">Processing Changes...</span>
+                    </div>
                 </div>
-                <div className="flex gap-2">
+            )}
+
+            {/* Top Navigation */}
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-xl lg:text-3xl font-black text-secondary lowercase capitalize tracking-tighter leading-none mb-1">Inventory <span className="text-teal-600 italic font-medium">Board</span></h1>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Dynamic Availability & Capacity Controls</p>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
-                        onClick={() => navigateDate(-14)}
-                        className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+                        onClick={() => setShowBulkModal(true)}
+                        className="flex-1 sm:flex-none bg-slate-100 text-secondary px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[9px] hover:bg-slate-200 transition-all flex items-center justify-center gap-2 border border-slate-200 group"
                     >
-                        <ChevronLeft size={20} />
-                    </button>
-                    <button className="px-6 py-2.5 bg-white border border-slate-100 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
-                        <Calendar size={14} className="text-primary" /> {startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        <Zap size={14} className="text-teal-500 group-hover:scale-125 transition-transform" /> Bulk Action
                     </button>
                     <button
-                        onClick={() => navigateDate(14)}
-                        className="p-2.5 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+                        onClick={handleSaveMatrix}
+                        disabled={Object.keys(pendingUpdates).length === 0}
+                        className={`flex-1 sm:flex-none px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl transition-all flex items-center justify-center gap-2 ${Object.keys(pendingUpdates).length > 0 ? 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                     >
-                        <ChevronRight size={20} />
+                        <Save size={14} /> Update All
                     </button>
                 </div>
             </header>
 
-            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+            {/* Filter Bar */}
+            <div className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-wrap items-center justify-center gap-4 relative z-30 max-w-6xl mx-auto border-b-4 border-b-teal-500/10">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => navigateDate(-1)} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100 transition-all active:scale-90 text-slate-400 shadow-inner"><ChevronLeft size={18} /></button>
+                    <div className="flex items-center gap-3 border border-slate-200 rounded-2xl px-6 py-2.5 shadow-sm bg-white hover:border-teal-300 transition-colors">
+                        <Calendar size={14} className="text-teal-400" />
+                        <input type="date" className="bg-transparent text-sm font-black outline-none text-secondary" value={startDate} onChange={(e) => { setStartDate(e.target.value); fetchData(e.target.value); }} />
+                    </div>
+                    <button onClick={() => navigateDate(1)} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-slate-100 transition-all active:scale-90 text-slate-400 shadow-inner"><ChevronRight size={18} /></button>
+                </div>
+                <div className="relative flex-grow lg:flex-none lg:w-56">
+                    <select className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-3 text-[11px] font-black outline-none appearance-none text-slate-700 shadow-inner lowercase capitalize focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500/30 transition-all" value={selectedRT} onChange={(e) => { setSelectedRT(e.target.value); setTimeout(fetchData, 10); }}>
+                        <option value="all">Filter: All Categories</option>
+                        {roomTypes.map(rt => <option key={rt._id} value={rt._id}>{rt.name}</option>)}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                <button onClick={() => fetchData()} className="bg-secondary text-white px-10 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg hover:bg-slate-800">
+                    <Search size={14} className={loading ? 'animate-spin' : ''} /> Run Query
+                </button>
+            </div>
+
+            {/* Matrix Board */}
+            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden border-b-8 border-b-slate-100">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse min-w-[1240px]">
                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-8 py-6 text-[10px] uppercase font-black tracking-widest text-slate-400 sticky left-0 bg-slate-50 z-20 w-64 border-r">Suite Category</th>
-                                {dates.map((date, i) => (
-                                    <th key={i} className="px-4 py-6 text-center border-r border-slate-100 min-w-[80px]">
-                                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter leading-none mb-1">{date.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                                        <p className={`text-sm font-black ${i === 0 ? 'text-primary' : 'text-secondary'}`}>{date.getDate()}</p>
-                                    </th>
-                                ))}
+                            <tr className="bg-slate-50/10 border-b border-slate-100">
+                                <th className="px-10 py-12 sticky left-0 bg-white z-20 border-r border-slate-100 min-w-[340px] shadow-[15px_0_20px_-10px_rgba(0,0,0,0.03)] text-center">
+                                    <p className="text-[11px] font-black text-secondary tracking-[0.3em] uppercase opacity-70">Room Logic</p>
+                                </th>
+                                {dates.map((d, i) => {
+                                    const dateObj = new Date(d);
+                                    const day = dateObj.getDay();
+                                    const isFri = day === 5;
+                                    const isSat = day === 6;
+                                    const isSun = day === 0;
+
+                                    const bgClass = isFri ? 'bg-teal-50/50' : isSat ? 'bg-amber-50/50' : isSun ? 'bg-rose-50/50' : '';
+                                    const textClass = isFri ? 'text-teal-600' : isSat ? 'text-orange-500' : isSun ? 'text-rose-500' : 'text-slate-400';
+
+                                    return (
+                                        <th key={i} className={`px-4 py-8 text-center border-r border-slate-100 min-w-[115px] ${bgClass}`}>
+                                            <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${textClass}`}>{dateObj.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</p>
+                                            <p className={`text-2xl font-black leading-none ${textClass.replace('text-', 'text-secondary')}`}>{dateObj.getDate()}</p>
+                                            <p className="text-[7px] font-black text-slate-300 uppercase mt-1 tracking-[0.2em]">{dateObj.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</p>
+                                        </th>
+                                    );
+                                })}
                             </tr>
                         </thead>
                         <tbody>
-                            {categories.map((cat, i) => (
-                                <tr key={cat._id} className="group hover:bg-slate-50/50 transition-all text-left">
-                                    <td className="px-8 py-5 sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-100 font-bold text-secondary text-sm">
-                                        <div className="flex flex-col">
-                                            <span>{cat.name}</span>
-                                            <span className="text-[9px] text-slate-300 font-black uppercase tracking-widest mt-1">Total {cat.totalRooms} Units</span>
-                                        </div>
-                                    </td>
-                                    {cat.availability.map((day, idx) => {
-                                        const { available } = day;
-                                        return (
-                                            <td
-                                                key={idx}
-                                                className={`px-4 py-5 text-center border-r border-b border-slate-50 transition-colors relative cursor-pointer ${available === 0 ? 'bg-rose-50/30' : available < 3 ? 'bg-amber-50/30' : ''
-                                                    }`}
-                                                onMouseEnter={() => setHoveredCell(`${i}-${idx}`)}
-                                                onMouseLeave={() => setHoveredCell(null)}
-                                            >
-                                                <span className={`text-xs font-black ${available === 0 ? 'text-rose-500' : available < 3 ? 'text-amber-500' : 'text-emerald-500'
-                                                    }`}>
-                                                    {available}
-                                                </span>
-                                                {available === 0 && <X size={10} className="absolute top-1 right-1 text-rose-300" />}
-                                                {available > 0 && available < 3 && <AlertCircle size={10} className="absolute top-1 right-1 text-amber-300" />}
-                                                {hoveredCell === `${i}-${idx}` && (
-                                                    <div className="absolute inset-0 border-2 border-primary pointer-events-none z-10" />
-                                                )}
+                            {matrix.map((row) => (
+                                <React.Fragment key={row._id}>
+                                    {/* Variant Header Row */}
+                                    <tr className="bg-slate-50/40 border-t border-slate-100">
+                                        <td colSpan={dates.length + 1} className="px-10 py-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-6">
+                                                    <span className="text-sm font-black text-secondary lowercase capitalize tracking-tighter border-l-4 border-teal-500 pl-4">{row.name}</span>
+                                                    <div className="flex items-center gap-4 text-[9px] font-black uppercase">
+                                                        <div className="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl border border-emerald-100">
+                                                            Total Limit:
+                                                            <input
+                                                                type="number"
+                                                                className="w-10 bg-transparent outline-none text-center font-black"
+                                                                value={row.totalRooms}
+                                                                onChange={(e) => updateTotalRooms(row._id, parseInt(e.target.value) || 0)}
+                                                            />
+                                                        </div>
+                                                        <span className="bg-amber-50 text-orange-500 px-3 py-1.5 rounded-xl border border-amber-100">Max To Sell: {row.totalRooms}</span>
+                                                    </div>
+                                                </div>
+                                                {row.isStopSellGlobal && <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-[8px] font-black uppercase animate-pulse">Global Stop Sell On</span>}
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    {/* Availability Entry */}
+                                    <tr className="group">
+                                        <td className="px-10 py-8 sticky left-0 bg-white group-hover:bg-slate-50/20 z-10 border-r border-slate-100 shadow-[15px_0_20px_-10px_rgba(0,0,0,0.02)]">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase">
+                                                    <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-teal-50 transition-colors"><Home size={14} className="text-teal-400" /></div>
+                                                    Rooms To Sell
+                                                </div>
+                                                <button
+                                                    onClick={() => handleCopyAvailability(row._id)}
+                                                    className="bg-teal-600 text-white px-5 py-3 rounded-2xl text-[9px] font-black uppercase flex items-center gap-2 shadow-lg shadow-teal-500/20 hover:bg-teal-700 active:scale-95 transition-all"
+                                                >
+                                                    <Copy size={12} /> Copy Row
+                                                </button>
+                                            </div>
+                                        </td>
+                                        {row.availability.map((a, i) => {
+                                            const isSun = new Date(a.date).getDay() === 0;
+                                            return (
+                                                <td key={i} className={`px-4 py-8 border-r border-slate-100 transition-all ${isSun ? 'bg-rose-50/10' : ''}`}>
+                                                    <input
+                                                        type="number"
+                                                        className={`w-full bg-white border-2 border-slate-100 rounded-2xl px-3 py-4 text-center text-sm font-black text-secondary shadow-sm outline-none transition-all ${a.isStopSell ? 'border-rose-100 bg-rose-50/50 text-rose-500/50 pointer-events-none' : 'focus:border-teal-500 focus:ring-8 focus:ring-teal-500/5'}`}
+                                                        value={a.roomsToSell}
+                                                        onChange={(e) => updateCell(row._id, a.date, 'roomsToSell', parseInt(e.target.value) || 0)}
+                                                    />
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+
+                                    {/* Stop Sell Row */}
+                                    <tr className="group border-b border-slate-100">
+                                        <td className="px-10 py-6 sticky left-0 bg-white group-hover:bg-slate-50/20 z-10 border-r border-slate-100 shadow-[15px_0_20px_-10px_rgba(0,0,0,0.02)]">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex items-center gap-2.5 text-[10px] font-black text-slate-500 uppercase">
+                                                    <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-rose-50 transition-colors"><Ban size={14} className="text-rose-400" /></div>
+                                                    Stop Sell
+                                                </div>
+                                                <div className="flex items-center gap-3 cursor-pointer group/total text-slate-400 hover:text-rose-500 transition-colors" onClick={() => handleStopSellAll(row._id, !row.availability.every(a => a.isStopSell))}>
+                                                    <span className="text-[8px] font-black uppercase tracking-tighter">Toggle All</span>
+                                                    <div className={`w-10 h-6 rounded-full relative transition-all shadow-inner border border-slate-100 ${row.availability.every(a => a.isStopSell) ? 'bg-rose-500' : 'bg-slate-100'}`}>
+                                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${row.availability.every(a => a.isStopSell) ? 'left-5' : 'left-0.5'}`} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        {row.availability.map((a, i) => (
+                                            <td key={i} className="px-4 py-6 border-r border-slate-100 text-center">
+                                                <div
+                                                    onClick={() => updateCell(row._id, a.date, 'isStopSell', !a.isStopSell)}
+                                                    className={`w-9 h-9 rounded-2xl border-2 flex items-center justify-center mx-auto transition-all cursor-pointer ${a.isStopSell ? 'bg-rose-500 border-rose-500 shadow-xl shadow-rose-200 scale-110' : 'bg-slate-50 border-slate-100 hover:border-slate-300 shadow-inner'}`}
+                                                >
+                                                    {a.isStopSell && <Check size={18} className="text-white" />}
+                                                </div>
                                             </td>
-                                        );
-                                    })}
-                                </tr>
+                                        ))}
+                                    </tr>
+                                </React.Fragment>
                             ))}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {/* Legend */}
-            <div className="flex flex-wrap items-center gap-6 px-4">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-emerald-500" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Healthy Inventory</span>
+            {/* Re-designed Bulk Action Modal */}
+            {showBulkModal && (
+                <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-secondary/80 backdrop-blur-xl animate-in fade-in duration-500">
+                    <div className="bg-white w-full max-w-xl rounded-[3.5rem] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-300 text-left border-8 border-teal-500/10">
+                        <div className="px-12 py-10 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black text-secondary tracking-tighter leading-none mb-1 lowercase capitalize">Bulk <span className="text-teal-600 italic">Overrides</span></h3>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Apply settings to multiple dates at once</p>
+                            </div>
+                            <button onClick={() => setShowBulkModal(false)} className="bg-white shadow-sm p-3 rounded-2xl text-slate-400 hover:text-rose-500 transition-all border border-slate-100"><X size={24} /></button>
+                        </div>
+                        <div className="px-12 py-10 space-y-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Selected Room Category</label>
+                                <div className="relative">
+                                    <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-black outline-none appearance-none cursor-pointer lowercase capitalize text-secondary focus:border-teal-500 transition-all" value={bulkForm.variantId} onChange={e => setBulkForm({ ...bulkForm, variantId: e.target.value })}>
+                                        <option value="">-- Click to choose category --</option>
+                                        {matrix.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                                    </select>
+                                    <ChevronDown size={20} className="absolute right-6 top-1/2 -translate-y-1/2 text-teal-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Start Date</label>
+                                    <input type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] px-6 py-4.5 text-xs font-black outline-none focus:border-teal-500 active:scale-[0.98] transition-all" value={bulkForm.fromDate} onChange={e => setBulkForm({ ...bulkForm, fromDate: e.target.value })} />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">End Date</label>
+                                    <input type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] px-6 py-4.5 text-xs font-black outline-none focus:border-teal-500 active:scale-[0.98] transition-all" value={bulkForm.toDate} onChange={e => setBulkForm({ ...bulkForm, toDate: e.target.value })} />
+                                </div>
+                            </div>
+
+                            {/* Day Selection Grid */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Active Weekdays</label>
+                                <div className="grid grid-cols-7 gap-2">
+                                    {Object.keys(bulkForm.days).map(day => (
+                                        <button
+                                            key={day}
+                                            onClick={() => setBulkForm({ ...bulkForm, days: { ...bulkForm.days, [day]: !bulkForm.days[day] } })}
+                                            className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all ${bulkForm.days[day] ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/20' : 'bg-slate-50 text-slate-300 border border-slate-100 hover:bg-slate-100'}`}
+                                        >
+                                            {day}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="p-8 bg-slate-50 rounded-[2.5rem] border-2 border-slate-100 space-y-6">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-teal-600 uppercase tracking-[0.3em] px-1">New Units Limit</label>
+                                    <input type="number" placeholder="Set Units Count..." className="w-full bg-white border-2 border-slate-100 rounded-[1.5rem] px-6 py-5 text-sm font-black outline-none shadow-inner focus:border-teal-400 transition-all" value={bulkForm.roomsToSell} onChange={e => setBulkForm({ ...bulkForm, roomsToSell: e.target.value })} />
+                                </div>
+                                <div className="flex items-center justify-between bg-white/50 p-4 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-rose-50 text-rose-500 rounded-xl"><Ban size={18} /></div>
+                                        <span className="text-[11px] font-black text-secondary uppercase italic">Activate Stop Sell</span>
+                                    </div>
+                                    <button onClick={() => setBulkForm({ ...bulkForm, isStopSell: !bulkForm.isStopSell })} className={`w-12 h-7 rounded-full relative transition-all shadow-inner ${bulkForm.isStopSell ? 'bg-rose-500' : 'bg-slate-200'}`}>
+                                        <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all shadow-md ${bulkForm.isStopSell ? 'left-6' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button onClick={handleBulkUpdate} className="w-full bg-secondary text-white py-6 rounded-[2rem] font-black uppercase tracking-[0.3em] text-xs shadow-2xl hover:bg-slate-800 active:scale-95 transition-all outline-none border-b-4 border-b-teal-500">
+                                Deploy Bulk Update
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-amber-500" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Critical Alert (&lt;3)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded bg-rose-500" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Sold Out Cycle</span>
-                </div>
-            </div>
+            )}
         </div>
     );
 };

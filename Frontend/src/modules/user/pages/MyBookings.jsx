@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
-import { Calendar, MapPin, ChevronLeft, Tag, CheckCircle2, Clock, BedDouble, Phone, X, AlertTriangle, Coffee } from 'lucide-react';
+import { Calendar, MapPin, ChevronLeft, Tag, CheckCircle2, Clock, BedDouble, Phone, X, AlertTriangle, Coffee, Download } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { jsPDF } from 'jspdf';
 
 const STATUS_CONFIG = {
     Confirmed: { color: 'bg-emerald-50 text-emerald-700 border-emerald-100', dot: 'bg-emerald-500', icon: CheckCircle2 },
@@ -90,6 +91,205 @@ const BookingCard = ({ booking, onManage }) => {
     );
 };
 
+// Helper: load image as base64
+const loadImageAsBase64 = (src) => new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+});
+
+// Native jsPDF voucher generator with logo — no html2canvas (avoids oklch color bug)
+const generateVoucherPDF = async (booking) => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const w = pdf.internal.pageSize.getWidth();
+    const fmt = (d) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const ci = new Date(booking.checkIn);
+    const co = new Date(booking.checkOut);
+    const nightsStay = Math.max(1, Math.ceil((co - ci) / 86400000));
+    const totalAdults = booking.roomDetails?.reduce((s, r) => s + r.adults, 0) || 2;
+    const totalChildren = booking.roomDetails?.reduce((s, r) => s + r.children, 0) || 0;
+
+    // Load logo
+    const logoBase64 = await loadImageAsBase64('/logo.png');
+
+    // Background
+    pdf.setFillColor(252, 252, 250);
+    pdf.rect(0, 0, w, 297, 'F');
+
+    // Top accent bar
+    pdf.setFillColor(16, 185, 129);
+    pdf.rect(0, 0, w, 4, 'F');
+
+    // Logo
+    let headerY = 15;
+    if (logoBase64) {
+        const sz = 32;
+        pdf.addImage(logoBase64, 'PNG', (w - sz) / 2, headerY, sz, sz);
+        headerY += sz + 5;
+    }
+
+    // Header Branding
+    pdf.setFontSize(24);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text('Ananya Hotel', w / 2, headerY + 5, { align: 'center' });
+
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text('NEW DIGHA, WEST BENGAL  \u00b7  LUXURY SANCTUARY', w / 2, headerY + 11, { align: 'center' });
+
+    pdf.setFontSize(7);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('stay@ananyahotel.com  \u00b7  +91 900 000 0000', w / 2, headerY + 16, { align: 'center' });
+
+    // Status / Reference
+    const divY = headerY + 22;
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(20, divY, w - 20, divY);
+
+    const idY = divY + 10;
+    pdf.setFontSize(9);
+    pdf.setTextColor(16, 185, 129);
+    pdf.text('CONFIRMED STAY VOUCHER', 20, idY);
+    pdf.setTextColor(148, 163, 184);
+    pdf.setFontSize(8);
+    pdf.text(`Reference ID: ${booking.bookingId}`, w - 20, idY, { align: 'right' });
+
+    // Sanctuary Info Box
+    let y = idY + 8;
+    pdf.setFillColor(248, 250, 252);
+    pdf.roundedRect(20, y, w - 40, 28, 3, 3, 'F');
+
+    pdf.setFontSize(7);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('SELECTED SANCTUARY', 28, y + 9);
+
+    pdf.setFontSize(14);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(booking.variant?.name || booking.roomType?.name || 'Luxury Suite', 28, y + 18);
+
+    if (booking.plan?.planName) {
+        pdf.setFontSize(7);
+        pdf.setTextColor(16, 185, 129);
+        pdf.text(booking.plan.planName.toUpperCase(), 28, y + 23);
+    }
+
+    pdf.setFontSize(7);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('CATEGORY', w - 28, y + 9, { align: 'right' });
+
+    pdf.setFontSize(10);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(booking.roomType?.name || 'Sanctuary', w - 28, y + 18, { align: 'right' });
+
+    // Timeline section
+    y += 34;
+    pdf.setFillColor(248, 250, 252);
+    pdf.roundedRect(20, y, (w - 45) / 2, 32, 3, 3, 'F');
+    pdf.roundedRect(25 + (w - 45) / 2, y, (w - 45) / 2, 32, 3, 3, 'F');
+
+    // Arrival
+    pdf.setFontSize(7); pdf.setTextColor(148, 163, 184);
+    pdf.text('ARRIVAL (CHECK-IN)', 28, y + 10);
+    pdf.setFontSize(11); pdf.setTextColor(15, 23, 42);
+    pdf.text(fmt(booking.checkIn), 28, y + 18);
+    pdf.setFontSize(7); pdf.setTextColor(148, 163, 184);
+    pdf.text('Check-in after 12:00 PM', 28, y + 25);
+
+    // Departure
+    const rx = 33 + (w - 45) / 2;
+    pdf.setFontSize(7); pdf.setTextColor(148, 163, 184);
+    pdf.text('DEPARTURE (CHECK-OUT)', rx, y + 10);
+    pdf.setFontSize(11); pdf.setTextColor(15, 23, 42);
+    pdf.text(fmt(booking.checkOut), rx, y + 18);
+    pdf.setFontSize(7); pdf.setTextColor(148, 163, 184);
+    pdf.text('Check-out before 11:00 AM', rx, y + 25);
+
+    // Metrics Row
+    y += 40;
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(20, y, w - 20, y);
+    y += 10;
+
+    const cols = [
+        { label: 'DURATION', value: `${nightsStay} Night${nightsStay > 1 ? 's' : ''}` },
+        { label: 'ROOMS', value: `${booking.roomsCount || 1} Unit${(booking.roomsCount || 1) > 1 ? 's' : ''}` },
+        { label: 'GUESTS', value: `${totalAdults}A${totalChildren > 0 ? ` · ${totalChildren}C` : ''}` },
+    ];
+
+    const colWidth = (w - 40) / cols.length;
+    cols.forEach((col, i) => {
+        const cx = 20 + colWidth * i + colWidth / 2;
+        pdf.setFontSize(7); pdf.setTextColor(148, 163, 184);
+        pdf.text(col.label, cx, y, { align: 'center' });
+        pdf.setFontSize(12); pdf.setTextColor(15, 23, 42);
+        pdf.text(col.value, cx, y + 8, { align: 'center' });
+    });
+
+    // Policies & Security Box
+    y += 18;
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(20, y, w - 20, y);
+    y += 8;
+
+    pdf.setFontSize(7);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('GUEST POLICIES', 20, y);
+    y += 6;
+
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 116, 139);
+    const policies = [
+        '\u00b7 Valid Photo ID Proof (Aadhar/Voter ID) is mandatory for check-in.',
+        '\u00b7 Management reserves the right of admission.',
+        '\u00b7 Early check-in or late check-out is subject to availability and extra charges.',
+        '\u00b7 Please carry a digital or printed copy of this voucher.'
+    ];
+    policies.forEach(pLine => {
+        pdf.text(pLine, 25, y);
+        y += 5;
+    });
+
+    // Final Valuation
+    y = 230;
+    pdf.setFillColor(15, 23, 42);
+    pdf.roundedRect(20, y, w - 40, 25, 3, 3, 'F');
+
+    pdf.setFontSize(7);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('TOTAL VALUATION (INCLUSIVE OF TAXES)', 28, y + 9);
+
+    pdf.setFontSize(16);
+    pdf.setTextColor(16, 185, 129);
+    pdf.text(`INR ${booking.totalPrice?.toLocaleString()}`, 28, y + 18);
+
+    pdf.setFontSize(8);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('OFFICIAL RECEIPT', w - 28, y + 18, { align: 'right' });
+
+    // Signature Area
+    y += 35;
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(20, y, 70, y);
+    pdf.setFontSize(6);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('AUTHORISED SIGNATORY', 20, y + 4);
+
+    // Footer
+    pdf.setFontSize(6);
+    pdf.text('Ananya Hotel \u00b7 New Digha \u00b7 Purba Medinipur \u00b7 West Bengal 721463', w / 2, 280, { align: 'center' });
+    pdf.text(`Digitally Generated on ${new Date().toLocaleString()}`, w / 2, 284, { align: 'center' });
+
+    pdf.save(`Ananya_Voucher_${booking.bookingId}.pdf`);
+};
+
 const MyBookings = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -98,6 +298,7 @@ const MyBookings = () => {
     const [loading, setLoading] = useState(true);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     const fetchBookings = async () => {
         if (!user) return;
@@ -176,15 +377,30 @@ const MyBookings = () => {
                                 </div>
                             </div>
 
+                            {/* Booking ID & Plan */}
+                            <div className="flex items-center justify-between p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
+                                <div className="flex items-center gap-2">
+                                    <Tag size={12} className="text-emerald-600" />
+                                    <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">#{selectedBooking.bookingId}</span>
+                                </div>
+                                {selectedBooking.plan && (
+                                    <span className="text-[8px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md">
+                                        {selectedBooking.plan.planName}
+                                    </span>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-3">
                                     <div className="bg-white p-3 rounded-xl border border-slate-50 shadow-sm">
                                         <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Check In</p>
-                                        <p className="text-secondary font-bold text-xs">{new Date(selectedBooking.checkIn).toLocaleDateString()}</p>
+                                        <p className="text-secondary font-bold text-xs">{new Date(selectedBooking.checkIn).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        <p className="text-[6px] text-slate-300 mt-0.5">After 12:00 PM</p>
                                     </div>
                                     <div className="bg-white p-3 rounded-xl border border-slate-50 shadow-sm">
                                         <p className="text-[7px] font-black text-slate-400 uppercase mb-1">Check Out</p>
-                                        <p className="text-secondary font-bold text-xs">{new Date(selectedBooking.checkOut).toLocaleDateString()}</p>
+                                        <p className="text-secondary font-bold text-xs">{new Date(selectedBooking.checkOut).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        <p className="text-[6px] text-slate-300 mt-0.5">Before 11:00 AM</p>
                                     </div>
                                 </div>
                                 <div className="bg-secondary p-4 rounded-xl text-white flex flex-col justify-between">
@@ -194,6 +410,20 @@ const MyBookings = () => {
                                         <p className="text-[6px] text-white/30 uppercase mt-0.5">Inclusive of Taxes</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Stay Duration & Guest Summary */}
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { label: 'Duration', value: `${Math.max(1, Math.ceil((new Date(selectedBooking.checkOut) - new Date(selectedBooking.checkIn)) / 86400000))} Night${Math.max(1, Math.ceil((new Date(selectedBooking.checkOut) - new Date(selectedBooking.checkIn)) / 86400000)) > 1 ? 's' : ''}` },
+                                    { label: 'Rooms', value: `${selectedBooking.roomsCount || 1} Unit${(selectedBooking.roomsCount || 1) > 1 ? 's' : ''}` },
+                                    { label: 'Guests', value: `${selectedBooking.roomDetails?.reduce((s, r) => s + r.adults, 0) || 0}A ${selectedBooking.roomDetails?.reduce((s, r) => s + r.children, 0) > 0 ? `· ${selectedBooking.roomDetails?.reduce((s, r) => s + r.children, 0)}C` : ''}` },
+                                ].map(({ label, value }) => (
+                                    <div key={label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
+                                        <p className="text-[6px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+                                        <p className="text-[10px] font-black text-secondary mt-1">{value}</p>
+                                    </div>
+                                ))}
                             </div>
 
                             <div className="space-y-2">
@@ -209,20 +439,29 @@ const MyBookings = () => {
                             </div>
                         </div>
 
-                        <div className="p-6 pt-0 flex gap-3">
-                            <button
-                                onClick={() => setSelectedBooking(null)}
-                                className="flex-1 py-3 bg-slate-100 text-slate-600 font-black uppercase text-[9px] tracking-widest rounded-xl active:scale-95 transition-all"
-                            >
-                                Close Window
-                            </button>
+                        <div className="p-6 pt-0 flex flex-col gap-3">
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setSelectedBooking(null)}
+                                    className="flex-1 py-3 bg-slate-100 text-slate-600 font-black uppercase text-[9px] tracking-widest rounded-xl active:scale-95 transition-all"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    onClick={async () => { setDownloading(true); try { await generateVoucherPDF(selectedBooking); } catch (e) { console.error(e); } finally { setDownloading(false); } }}
+                                    disabled={downloading}
+                                    className="flex-1 py-3 bg-emerald-600 text-white font-black uppercase text-[9px] tracking-widest rounded-xl shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                                >
+                                    <Download size={14} /> {downloading ? 'Creating...' : 'Download PDF'}
+                                </button>
+                            </div>
                             {(selectedBooking.bookingStatus === 'pending' || selectedBooking.bookingStatus === 'confirmed') && (
                                 <button
                                     onClick={() => handleCancel(selectedBooking._id)}
                                     disabled={isUpdating}
-                                    className="flex-1 py-3 bg-red-500 text-white font-black uppercase text-[9px] tracking-widest rounded-xl shadow-xl shadow-red-500/20 active:scale-95 transition-all disabled:opacity-50"
+                                    className="w-full py-3 bg-red-50 text-red-500 border border-red-100 font-black uppercase text-[9px] tracking-widest rounded-xl active:scale-95 transition-all disabled:opacity-50"
                                 >
-                                    {isUpdating ? 'Modifying...' : 'Cancel'}
+                                    {isUpdating ? 'Modifying...' : 'Cancel Reservation'}
                                 </button>
                             )}
                         </div>

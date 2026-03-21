@@ -48,6 +48,7 @@ router.post('/register', async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                profilePicture: user.profilePicture,
                 isVerified: user.isVerified,
                 token: generateToken(user._id)
             });
@@ -103,6 +104,7 @@ router.post('/login', async (req, res) => {
                 city: user.city,
                 country: user.country,
                 role: user.role,
+                profilePicture: user.profilePicture,
                 walletBalance: user.walletBalance,
                 token: generateToken(user._id)
             });
@@ -112,6 +114,22 @@ router.post('/login', async (req, res) => {
     } catch (error) {
         console.error(`Login Error: ${error.message}`);
         res.status(500).json({ message: 'Server error during login' });
+    }
+});
+
+// @desc    Get current user profile
+// @route   GET /api/auth/me/:id
+// @access  Private (though public for simple sync now)
+router.get('/me/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password');
+        if (user) {
+            res.json(user);
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

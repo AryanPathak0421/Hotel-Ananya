@@ -1,5 +1,4 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 import dotenv from 'dotenv';
 
@@ -11,14 +10,25 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const storage = (folder) => new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: `hotel_ananya/${folder}`,
-        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-    },
-});
+// Configure memory storage instead of disk or direct CloudinaryStorage
+// This is more reliable for different environments
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-const upload = (folder) => multer({ storage: storage(folder) });
+const uploadToCloudinary = (buffer, folder = 'media') => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: `hotel_ananya/${folder}`,
+                allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
+        uploadStream.end(buffer);
+    });
+};
 
-export { cloudinary, upload };
+export { cloudinary, upload, uploadToCloudinary };

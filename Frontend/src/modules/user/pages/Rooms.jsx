@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../../services/api';
-import { Star, Wifi, Wind, Coffee, Tv, Maximize2, BedDouble, Users, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
-
-const amenityIcons = { 'Free WiFi': Wifi, 'Split AC': Wind, 'Electric Kettle': Coffee, 'Flat TV': Tv };
+import { Star, Maximize2, BedDouble, Users, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { getAmenityIcon } from '../../../utils/amenityIcons';
 
 const RoomCard = ({ room, onBook }) => (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-500 group">
@@ -57,7 +56,7 @@ const RoomCard = ({ room, onBook }) => (
             {/* Amenities */}
             <div className="flex flex-wrap gap-1.5">
                 {room.amenities?.slice(0, 4).map(amenity => {
-                    const Icon = amenityIcons[amenity] || ChevronRight;
+                    const Icon = getAmenityIcon(amenity);
                     return (
                         <div key={amenity} className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
                             <Icon size={9} className="text-primary" />

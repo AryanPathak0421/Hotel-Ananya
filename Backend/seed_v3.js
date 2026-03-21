@@ -51,9 +51,18 @@ const seed = async () => {
 
             // Variants for each Room Type
             const variants = [
-                { name: rt.name, roomType: rt._id, totalRooms: Math.floor(rt.totalRooms * 0.7) },
-                { name: rt.name + ' Beach Facing', roomType: rt._id, totalRooms: Math.floor(rt.totalRooms * 0.3), amenities: ['Balcony', 'Ocean View'] }
+                { name: rt.name, roomType: rt._id, totalRooms: rtData.name.includes('Double') ? Math.floor(rt.totalRooms * 0.7) : rt.totalRooms }
             ];
+
+            // Only add View Facing for Double Bed
+            if (rtData.name.includes('Double')) {
+                variants.push({
+                    name: rt.name + ' View Facing',
+                    roomType: rt._id,
+                    totalRooms: Math.floor(rt.totalRooms * 0.3),
+                    amenities: ['Balcony', 'Ocean View']
+                });
+            }
 
             for (const vData of variants) {
                 const variant = await RoomVariant.create(vData);
@@ -101,7 +110,7 @@ const seed = async () => {
                     },
                     {
                         roomVariant: variant._id,
-                        planName: 'Room with BLSD',
+                        planName: 'Room with breakfast, lunch, snacks and dinner',
                         adult1Price: Math.round((singlePrice + 1200) * multiplier),
                         adult2Price: Math.round((basePrice + 2000) * multiplier),
                         extraAdultPrice: Math.round((extraAdult + 900) * multiplier),

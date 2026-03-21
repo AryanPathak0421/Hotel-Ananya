@@ -7,27 +7,31 @@ const router = express.Router();
 
 // @desc    Create a new booking (multifaceted)
 router.post('/', async (req, res) => {
-    const { userId, roomType, variant, plan, checkIn, checkOut, roomsCount, roomDetails, totalPrice, bookingId, paymentMethod = 'wallet', paymentId } = req.body;
+    const {
+        userId, roomType, variant, plan, checkIn, checkOut, roomsCount, roomDetails,
+        totalPrice, amountPaid = totalPrice, bookingId, paymentMethod = 'wallet', paymentId,
+        paymentStatus = 'paid'
+    } = req.body;
 
     try {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (paymentMethod === 'wallet' && user.walletBalance < totalPrice) {
+        if (paymentMethod === 'wallet' && user.walletBalance < amountPaid) {
             return res.status(400).json({ message: 'Insufficient wallet balance' });
         }
 
         if (paymentMethod === 'wallet') {
-            user.walletBalance -= totalPrice;
+            user.walletBalance -= amountPaid;
             await user.save();
         }
 
-        // Create transaction record
+        // Create transaction record for the amount actually paid
         await Transaction.create({
             user: userId,
-            type: paymentMethod === 'wallet' ? 'debit' : 'credit',
-            amount: totalPrice,
-            description: `Room Booking #${bookingId} via ${paymentMethod}`
+            type: 'debit',
+            amount: amountPaid,
+            description: `Room Booking #${bookingId} (${paymentStatus} payment) via ${paymentMethod}`
         });
 
         // Create booking
@@ -41,9 +45,13 @@ router.post('/', async (req, res) => {
             roomsCount,
             roomDetails,
             totalPrice,
+            amountPaid,
+            remainingBalance: totalPrice - amountPaid,
             bookingId,
             paymentMethod,
-            paymentId
+            paymentId,
+            paymentStatus,
+            bookingStatus: 'confirmed'
         });
 
         res.status(201).json(booking);

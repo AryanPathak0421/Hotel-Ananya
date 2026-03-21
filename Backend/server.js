@@ -14,6 +14,10 @@ import discountRoutes from './routes/discounts.js';
 import paymentRoutes from './routes/payment.js';
 import pricingRoutes from './routes/pricing.js';
 import serviceRoutes from './routes/services.js';
+import messageRoutes from './routes/messages.js';
+import termsRoutes from './routes/terms.js';
+import notificationRoutes from './routes/notifications.js';
+import inventoryRoutes from './routes/inventory.js';
 
 dotenv.config();
 
@@ -39,6 +43,10 @@ app.use('/api/discounts', discountRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/pricing', pricingRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/terms', termsRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 
 // Basic Route
@@ -48,7 +56,9 @@ app.get('/', (req, res) => {
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    console.error('SERVER ERROR HANDLER:', err.stack);
+    // Silent write for agent to see later
+    import('fs').then(fs => fs.appendFileSync('error.log', `[${new Date().toISOString()}] ${err.stack}\n`));
     res.status(500).json({ message: 'Internal Server Error', error: err.message });
 });
 

@@ -3,8 +3,14 @@ import RoomType from '../models/RoomType.js';
 import Pricing from '../models/Pricing.js';
 import Booking from '../models/Booking.js';
 import RoomVariant from '../models/RoomVariant.js';
+import Inventory from '../models/Inventory.js';
 
 const router = express.Router();
+
+const normalizeDate = (d) => {
+    const date = new Date(d);
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+};
 
 // @desc    Get all room types with starting price
 // @route   GET /api/rooms
@@ -55,13 +61,146 @@ router.get('/categories', async (req, res) => {
     }
 });
 
-// @desc    Get ALL variants for a room type (including inactive for admin)
-router.get('/variants/:roomTypeId', async (req, res) => {
+// @desc    Get ALL variants for a room type with dynamic starting prices
+router.post('/variants-with-pricing', async (req, res) => {
+    const { roomTypeId, checkIn, checkOut, roomDetails } = req.body;
     try {
-        const variants = await RoomVariant.find({ roomType: req.params.roomTypeId });
-        res.json(variants);
+        const roomType = await RoomType.findById(roomTypeId);
+        if (!roomType) return res.status(404).json({ message: 'Room type not found' });
+        const variants = await RoomVariant.find({ roomType: roomTypeId });
+        const start = checkIn ? normalizeDate(checkIn) : null;
+        const end = checkOut ? normalizeDate(checkOut) : null;
+
+        const results = await Promise.all(variants.map(async (v) => {
+            // Find the lowest price plan for this variant
+            const plans = await Pricing.find({ roomVariant: v._id });
+            if (plans.length === 0) return { ...v.toObject(), basePrice: 0 };
+
+            let lowestTotal = Infinity;
+            let isStopped = false;
+            let minAvail = Infinity;
+
+            // Fetch overrides once per variant
+            const overrides = (start && end) ? await Inventory.find({
+                roomVariant: v._id,
+                date: { $gte: start, $lt: end }
+            }) : [];
+
+            if (overrides.length > 0) {
+                isStopped = overrides.some(o => o.isStopSell);
+                // Pre-calculate min availability for the range
+                for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    const override = overrides.find(o => o.date.toISOString().split('T')[0] === dateStr);
+                    let dayTotal = roomType.totalRooms;
+                    if (override && override.roomsToSell !== undefined) dayTotal = override.roomsToSell;
+                    if (dayTotal < minAvail) minAvail = dayTotal;
+                }
+            } else if (start && end) {
+                minAvail = roomType.totalRooms; // Default if no overrides found
+            }
+
+            for (const plan of plans) {
+                let currentTotal = 0;
+
+                if (start && end) {
+                    for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                        const dateStr = d.toISOString().split('T')[0];
+                        const override = overrides.find(o => o.date.toISOString().split('T')[0] === dateStr);
+                        const rateOverride = override?.rates?.find(r => r.pricingPlan.toString() === plan._id.toString());
+
+                        const dp = {
+                            adult1: rateOverride?.adult1Price ?? plan.adult1Price,
+                            adult2: rateOverride?.adult2Price ?? plan.adult2Price,
+                            extraAdult: rateOverride?.extraAdultPrice ?? plan.extraAdultPrice,
+                            child: rateOverride?.childPrice ?? plan.childPrice
+                        };
+
+                        if (roomDetails) {
+                            roomDetails.forEach(room => {
+                                if (room.adults === 1) currentTotal += dp.adult1;
+                                else if (room.adults === 2) currentTotal += dp.adult2;
+                                else currentTotal += (dp.adult2 + dp.extraAdult);
+                                currentTotal += (room.children * dp.child);
+                            });
+                        } else {
+                            currentTotal += dp.adult2;
+                        }
+                    }
+                } else {
+                    currentTotal = plan.adult2Price; // Fallback
+                }
+                if (currentTotal < lowestTotal) lowestTotal = currentTotal;
+            }
+
+            const nightCount = (start && end) ? Math.max(1, Math.round((end - start) / 86400000)) : 1;
+            const avgPrice = lowestTotal === Infinity ? 0 : Math.round(lowestTotal / nightCount);
+
+            return {
+                ...v.toObject(),
+                basePrice: avgPrice,
+                pricingPlanMeta: plans.length > 0 ? plans[0] : null,
+                isSoldOut: minAvail <= 0,
+                isStopSell: isStopped
+            };
+        }));
+
+        // Calculate overall pricing meta averages for the stay duration
+        let avgMeta = { adult1: 0, adult2: 0, extraAdult: 0, child: 0 };
+        if (results.length > 0 && start && end) {
+            const firstVariant = variants[0];
+            const plans = await Pricing.find({ roomVariant: firstVariant._id });
+            const plan = plans[0] || { adult1Price: 0, adult2Price: 0, extraAdultPrice: 0, childPrice: 0 };
+
+            const overrides = await Inventory.find({
+                roomVariant: firstVariant._id,
+                date: { $gte: start, $lt: end }
+            });
+
+            let sum1 = 0, sum2 = 0, sumEx = 0, sumCh = 0;
+            const days = Math.max(1, Math.round((end - start) / 86400000));
+
+            for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                const dateStr = d.toISOString().split('T')[0];
+                const ov = overrides.find(o => o.date.toISOString().split('T')[0] === dateStr);
+                const rateOv = ov?.rates?.find(r => r.pricingPlan.toString() === plan._id?.toString());
+
+                sum1 += rateOv?.adult1Price ?? plan.adult1Price;
+                sum2 += rateOv?.adult2Price ?? plan.adult2Price;
+                sumEx += rateOv?.extraAdultPrice ?? plan.extraAdultPrice;
+                sumCh += rateOv?.childPrice ?? plan.childPrice;
+            }
+
+            avgMeta = {
+                adult1: Math.round(sum1 / days),
+                adult2: Math.round(sum2 / days),
+                extraAdult: Math.round(sumEx / days),
+                child: Math.round(sumCh / days)
+            };
+        } else if (results.length > 0) {
+            // No dates yet, use first variant's first plan as generic preview
+            const meta = results[0]?.pricingPlanMeta;
+            if (meta) {
+                avgMeta = {
+                    adult1: meta.adult1Price,
+                    adult2: meta.adult2Price,
+                    extraAdult: meta.extraAdultPrice,
+                    child: meta.childPrice
+                };
+            }
+        }
+
+        const meta = avgMeta;
+        const suggestedTotal = results[0]?.lowestTotal || 0; // Use the lowest price of the first variant as estimate
+
+        res.json({
+            variants: results,
+            pricingMeta: meta,
+            suggestedTotal
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching variants' });
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching variants with pricing' });
     }
 });
 
@@ -98,6 +237,70 @@ router.delete('/variants/:id', async (req, res) => {
     }
 });
 
+// @desc    Get all plans for a variant with dynamic stay totals (Linked to Admin Rates Matrix)
+router.post('/variant-plans-pricing', async (req, res) => {
+    const { variantId, checkIn, checkOut, roomDetails } = req.body;
+    try {
+        const plans = await Pricing.find({ roomVariant: variantId }).populate('ratePlan').lean();
+        const start = checkIn ? normalizeDate(checkIn) : null;
+        const end = checkOut ? normalizeDate(checkOut) : null;
+
+        const results = await Promise.all(plans.map(async (plan) => {
+            let stayTotal = 0;
+
+            if (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                const overrides = await Inventory.find({
+                    roomVariant: variantId,
+                    date: { $gte: start, $lt: end }
+                }).lean();
+
+                for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    const override = overrides.find(o => new Date(o.date).toISOString().split('T')[0] === dateStr);
+                    const rateOverride = override?.rates?.find(r => r.pricingPlan.toString() === plan._id.toString());
+
+                    const dp = {
+                        adult1: (rateOverride?.adult1Price > 0) ? rateOverride.adult1Price : (plan.adult1Price || 0),
+                        adult2: (rateOverride?.adult2Price > 0) ? rateOverride.adult2Price : (plan.adult2Price || 0),
+                        extraAdult: (rateOverride?.extraAdultPrice > 0) ? rateOverride.extraAdultPrice : (plan.extraAdultPrice || 0),
+                        child: (rateOverride?.childPrice > 0) ? rateOverride.childPrice : (plan.childPrice || 0)
+                    };
+
+                    if (roomDetails && roomDetails.length > 0) {
+                        roomDetails.forEach(room => {
+                            if (room.adults === 1) stayTotal += dp.adult1;
+                            else if (room.adults === 2) stayTotal += dp.adult2;
+                            else stayTotal += (dp.adult2 + (room.adults - 2) * dp.extraAdult);
+                            stayTotal += (room.children * dp.child);
+                        });
+                    } else {
+                        stayTotal += dp.adult2;
+                    }
+                }
+            }
+
+            if (stayTotal === 0) {
+                stayTotal = plan.adult2Price || 0;
+            }
+
+            const numNights = (start && end && !isNaN(start.getTime()) && !isNaN(end.getTime()))
+                ? Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000))
+                : 1;
+
+            return {
+                ...plan,
+                dynamicTotal: stayTotal,
+                avgNightly: stayTotal / numNights
+            };
+        }));
+
+        res.json(results);
+    } catch (error) {
+        console.error('Pricing Error:', error);
+        res.status(500).json({ message: 'Error calculating stay pricing' });
+    }
+});
+
 // @desc    Get pricing for a variant
 router.get('/pricing/:variantId', async (req, res) => {
     try {
@@ -129,37 +332,104 @@ router.post('/check-availability', async (req, res) => {
         const roomType = await RoomType.findById(roomTypeId);
         if (!roomType) return res.status(404).json({ message: 'Room type not found' });
 
+        const start = normalizeDate(checkIn);
+        const end = normalizeDate(checkOut);
+
+        // Check for Stop Sell or Manual Override in Inventory per variant
+        const overrides = await Inventory.find({
+            roomVariant: variantId,
+            date: { $gte: start, $lt: end }
+        });
+
+        if (overrides.some(o => o.isStopSell)) {
+            return res.json({ available: false, message: 'Dates are blocked (Stop Sell)' });
+        }
+
         const searchCriteria = {
             roomType: roomTypeId,
             bookingStatus: { $in: ['pending', 'confirmed'] },
-            $or: [
-                { checkIn: { $lt: checkOut }, checkOut: { $gt: checkIn } }
-            ]
+            $or: [{ checkIn: { $lt: checkOut }, checkOut: { $gt: checkIn } }]
         };
 
-        if (variantId) {
-            searchCriteria.variant = variantId;
-        }
+        if (variantId) searchCriteria.variant = variantId;
 
         const existingBookings = await Booking.find(searchCriteria);
-        const bookedRooms = existingBookings.reduce((sum, b) => sum + b.roomsCount, 0);
 
-        // If variantId is provided, check against variant total rooms, otherwise check roomType total (if used as general)
-        let totalRooms = roomType.totalRooms;
-        if (variantId) {
-            const variant = await RoomVariant.findById(variantId);
-            if (variant) totalRooms = variant.totalRooms;
+        // For each day, check availability
+        let minAvailable = Infinity;
+        for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const override = overrides.find(o => o.date.toISOString().split('T')[0] === dateStr);
+
+            const bookedOnThisDay = existingBookings.filter(b =>
+                new Date(b.checkIn) < new Date(d.getTime() + 86400000) && new Date(b.checkOut) > d
+            ).reduce((sum, b) => sum + b.roomsCount, 0);
+
+            let dayTotal = roomType.totalRooms;
+            if (override && override.roomsToSell !== undefined) dayTotal = override.roomsToSell;
+
+            const dayAvailable = dayTotal - bookedOnThisDay;
+            if (dayAvailable < minAvailable) minAvailable = dayAvailable;
         }
 
-        const availableCount = totalRooms - bookedRooms;
-
         res.json({
-            available: availableCount > 0,
-            availableCount,
-            totalRooms
+            available: minAvailable > 0,
+            availableCount: minAvailable === Infinity ? roomType.totalRooms : Math.max(0, minAvailable),
+            totalRooms: roomType.totalRooms
         });
     } catch (error) {
         res.status(500).json({ message: 'Availability check failed' });
+    }
+});
+
+// @desc    Calculate dynamic pricing for a date range
+router.post('/calculate-pricing', async (req, res) => {
+    const { roomTypeId, variantId, planId, checkIn, checkOut, roomDetails } = req.body;
+    try {
+        const start = normalizeDate(checkIn);
+        const end = normalizeDate(checkOut);
+        const basePlan = await Pricing.findById(planId);
+
+        const overrides = await Inventory.find({
+            roomVariant: variantId,
+            date: { $gte: start, $lt: end }
+        });
+
+        let total = 0;
+        let nightCount = 0;
+
+        for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const override = overrides.find(o => o.date.toISOString().split('T')[0] === dateStr);
+            const rateOverride = override?.rates.find(r => r.pricingPlan.toString() === planId);
+
+            const dayPrices = {
+                adult1: rateOverride?.adult1Price ?? basePlan.adult1Price,
+                adult2: rateOverride?.adult2Price ?? basePlan.adult2Price,
+                extraAdult: rateOverride?.extraAdultPrice ?? basePlan.extraAdultPrice,
+                child: rateOverride?.childPrice ?? basePlan.childPrice
+            };
+
+            // Calculate for each room in detail
+            if (roomDetails) {
+                roomDetails.forEach(room => {
+                    let roomPrice = 0;
+                    if (room.adults === 1) roomPrice = dayPrices.adult1;
+                    else if (room.adults === 2) roomPrice = dayPrices.adult2;
+                    else roomPrice = dayPrices.adult2 + dayPrices.extraAdult;
+
+                    roomPrice += (room.children * dayPrices.child);
+                    total += roomPrice;
+                });
+            } else {
+                total += dayPrices.adult2; // Fallback
+            }
+            nightCount++;
+        }
+
+        res.json({ total, nightCount });
+    } catch (error) {
+        res.status(500).json({ message: 'Pricing calculation failed' });
     }
 });
 

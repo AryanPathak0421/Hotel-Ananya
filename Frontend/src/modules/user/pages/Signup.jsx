@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
@@ -20,8 +20,13 @@ const Signup = () => {
     const [otp, setOtp] = useState('');
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { signup } = useAuth();
+    const [picLoading, setPicLoading] = useState(false);
+    const { signup, user } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (user) navigate('/');
+    }, [user, navigate]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -225,18 +230,54 @@ const Signup = () => {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <ImageIcon size={10} className="text-primary" /> Profile Picture URL
+                                <ImageIcon size={10} className="text-primary" /> Profile Identity
                             </label>
-                            <input type="text" name="profilePicture" value={formData.profilePicture} onChange={handleChange}
-                                placeholder="https://image-url.com"
-                                className="w-full bg-slate-50 border border-slate-200 text-sm px-4 py-3.5 rounded-xl outline-none text-secondary font-medium"
-                            />
+                            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 relative group overflow-hidden">
+                                {picLoading && (
+                                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
+                                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                )}
+                                <div className="w-16 h-16 bg-white rounded-xl border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center relative">
+                                    {formData.profilePicture ? (
+                                        <img src={formData.profilePicture} className="w-full h-full object-cover" alt="Profile" />
+                                    ) : (
+                                        <User size={24} className="text-slate-200" />
+                                    )}
+                                </div>
+                                <div className="flex-grow">
+                                    <p className="text-[10px] font-black text-secondary uppercase tracking-widest">Select Portrait</p>
+                                    <p className="text-[8px] text-slate-400 font-bold mt-0.5">JPG, PNG or WEBP (Standard CDN format)</p>
+                                    <div className="relative mt-2">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={async (e) => {
+                                                const file = e.target.files[0];
+                                                if (!file) return;
+                                                setPicLoading(true);
+                                                const d = new FormData();
+                                                d.append('image', file);
+                                                try {
+                                                    const res = await api.post('/media/upload-single', d);
+                                                    setFormData(prev => ({ ...prev, profilePicture: res.data.imageUrl }));
+                                                } catch (err) { alert("Upload failed"); }
+                                                finally { setPicLoading(false); }
+                                            }}
+                                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                                        />
+                                        <button type="button" className="text-[9px] font-black text-primary uppercase tracking-[0.2em] border-b border-primary/30">
+                                            {formData.profilePicture ? 'Update Asset' : 'Upload Asset'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
                             <input type="checkbox" name="termsAccepted" checked={formData.termsAccepted} onChange={handleChange} className="mt-1 accent-primary w-4 h-4" />
                             <span className="text-[10px] text-slate-500 leading-relaxed">
-                                I accept the <span className="text-primary font-bold">Terms & Conditions</span> and privacy policy of Hotel Ananya.
+                                I accept the <Link to="/terms" target="_blank" className="text-primary font-bold underline">Terms & Conditions</Link> and privacy policy of Hotel Ananya.
                             </span>
                         </label>
 

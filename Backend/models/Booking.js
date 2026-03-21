@@ -13,8 +13,11 @@ const bookingSchema = new mongoose.Schema({
         children: { type: Number, default: 0 }
     }],
     totalPrice: { type: Number, required: true },
+    amountPaid: { type: Number, default: 0 },
+    remainingBalance: { type: Number, default: 0 },
     bookingId: { type: String, required: true, unique: true },
     bookingStatus: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'pending' },
+    paymentStatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid' },
     paymentMethod: { type: String, default: 'wallet' },
     paymentId: { type: String }
 }, { timestamps: true });

@@ -1,45 +1,50 @@
 import { useState, useEffect } from 'react';
 import api from '../../../services/api';
-import { Mail, Shield, User as UserIcon, MoreHorizontal, Search, Filter, Calendar } from 'lucide-react';
+import { Search, Filter, Shield, Download, Phone, Mail, Calendar, MapPin, UserCheck, UserX } from 'lucide-react';
 
 const Users = () => {
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('All');
     const [loading, setLoading] = useState(true);
-
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newStaff, setNewStaff] = useState({
         name: '', email: '', password: '', role: 'admin',
         mobile: '', country: 'India', city: 'Digha'
     });
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const { data } = await api.get('/users');
-                setUsers(data);
-            } catch (error) {
-                console.error('Error fetching users:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUsers();
-    }, []);
+    const fetchUsers = async () => {
+        try {
+            const { data } = await api.get('/users');
+            setUsers(data);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchUsers(); }, []);
 
     const handleAddStaff = async (e) => {
         e.preventDefault();
         try {
-            const { data } = await api.post('/auth/register', newStaff);
-            // After register, data contains _id, name, email, etc.
-            // We fetch the list again or append manually
-            setUsers([...users, { ...newStaff, _id: data._id, createdAt: new Date(), isVerified: true }]);
+            await api.post('/auth/register', newStaff);
+            fetchUsers();
             setIsModalOpen(false);
             setNewStaff({ name: '', email: '', password: '', role: 'admin', mobile: '', country: 'India', city: 'Digha' });
         } catch (error) {
-            console.error('Error adding staff:', error);
-            alert(error.response?.data?.message || 'Update failed');
+            alert(error.response?.data?.message || 'Failed to add staff');
+        }
+    };
+
+    const toggleStatus = async (user) => {
+        try {
+            const newStatus = user.status === 'active' ? 'blocked' : 'active';
+            await api.put(`/users/${user._id}`, { status: newStatus });
+            fetchUsers();
+        } catch (error) {
+            alert('Failed to update status');
         }
     };
 
@@ -49,187 +54,196 @@ const Users = () => {
         return matchesSearch && matchesRole;
     });
 
-    if (loading) return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-    );
+    const downloadCSV = () => {
+        const headers = ["Name", "Email", "Mobile", "Role", "City", "Country", "Wallet", "Verified", "Status", "Joined"];
+        const rows = filtered.map(u => [
+            u.name, u.email, u.mobile, u.role.toUpperCase(), u.city, u.country, u.walletBalance, u.isVerified, u.status, new Date(u.createdAt).toLocaleDateString()
+        ]);
+
+        let csvContent = "data:text/csv;charset=utf-8,"
+            + headers.join(",") + "\n"
+            + rows.map(r => r.map(cell => `"${cell}"`).join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Ananya_Users_Registry_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link); link.click();
+        document.body.removeChild(link);
+    };
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500 text-left pb-10">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-secondary">Community & Access</h1>
-                    <p className="text-sm text-slate-500 font-medium">Managing {users.length} registered guests and administrators.</p>
+                    <label className="text-[9px] font-bold text-primary uppercase tracking-[0.2em] mb-1 block">Account Management</label>
+                    <h1 className="text-xl lg:text-2xl font-bold text-secondary uppercase tracking-tight leading-none">Users <span className="text-primary italic">Registry</span></h1>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-secondary text-white px-6 py-2.5 rounded-xl font-bold text-xs hover:bg-slate-800 transition-all shadow-lg shadow-secondary/20"
-                >
-                    + Add New Staff
-                </button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-secondary px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-[9px] shadow-sm hover:scale-105 active:scale-95 transition-all"
+                    >
+                        <Shield size={14} /> Add Staff
+                    </button>
+                    <button
+                        onClick={downloadCSV}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-secondary text-white px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-[9px] shadow-sm hover:bg-primary hover:text-secondary transition-all"
+                    >
+                        <Download size={14} /> Export CSV
+                    </button>
+                </div>
             </header>
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 shadow-2xl relative animate-in zoom-in-95 duration-300">
-                        <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 p-2 hover:bg-slate-50 rounded-full transition-colors text-slate-400">
-                            <Shield size={20} />
-                        </button>
-                        <h3 className="text-xl font-bold text-secondary mb-6">Create Staff Identity</h3>
-                        <form onSubmit={handleAddStaff} className="space-y-4">
+                <div className="fixed inset-0 bg-secondary/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-sm w-full max-w-lg p-8 shadow-2xl relative animate-in zoom-in-95 duration-300">
+                        <h3 className="text-xl font-bold text-secondary uppercase mb-6">Create Staff <span className="text-primary italic">Account</span></h3>
+                        <form onSubmit={handleAddStaff} className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Full Identity</label>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-400">Full Name</label>
                                     <input required value={newStaff.name} onChange={e => setNewStaff({ ...newStaff, name: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                        placeholder="Full name" />
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-sm px-4 py-2.5 text-xs font-bold outline-none focus:ring-1 focus:ring-primary uppercase transition-all" />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Mobile</label>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-400">Mobile</label>
                                     <input required value={newStaff.mobile} onChange={e => setNewStaff({ ...newStaff, mobile: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                        placeholder="+91..." />
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-sm px-4 py-2.5 text-xs font-bold outline-none focus:ring-1 focus:ring-primary transition-all" />
                                 </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Protocol Email</label>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-slate-400">Email Address</label>
                                 <input required type="email" value={newStaff.email} onChange={e => setNewStaff({ ...newStaff, email: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                    placeholder="admin@hotelananya.com" />
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-sm px-4 py-2.5 text-xs font-bold outline-none focus:ring-1 focus:ring-primary transition-all" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">City</label>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-400">City</label>
                                     <input required value={newStaff.city} onChange={e => setNewStaff({ ...newStaff, city: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                        placeholder="City" />
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-sm px-4 py-2.5 text-xs font-bold outline-none focus:ring-1 focus:ring-primary transition-all" />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Country</label>
-                                    <input required value={newStaff.country} onChange={e => setNewStaff({ ...newStaff, country: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                        placeholder="Country" />
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase text-slate-400">Password</label>
+                                    <input required type="password" value={newStaff.password} onChange={e => setNewStaff({ ...newStaff, password: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-sm px-4 py-2.5 text-xs font-bold outline-none focus:ring-1 focus:ring-primary transition-all" />
                                 </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Access Phrase</label>
-                                <input required type="password" value={newStaff.password} onChange={e => setNewStaff({ ...newStaff, password: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                                    placeholder="••••••••" />
                             </div>
                             <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-secondary transition-colors">Cancel</button>
-                                <button type="submit" className="flex-1 py-3 bg-primary text-secondary rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">Authorize Staff</button>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-[10px] font-bold uppercase text-slate-400 hover:text-secondary">Cancel</button>
+                                <button type="submit" className="flex-1 py-3 bg-secondary text-white rounded-sm text-[10px] font-bold uppercase hover:bg-primary hover:text-secondary transition-all">Authorize Staff</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Controls */}
-            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:w-80">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search by name or email..."
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 transition-all text-xs font-bold"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-
-                <div className="flex items-center gap-2 bg-slate-50 px-4 py-1.5 rounded-xl border border-slate-100">
-                    <Filter size={14} className="text-slate-400" />
-                    <select
-                        className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
-                        value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
-                    >
-                        <option>All Roles</option>
-                        <option>Admin</option>
-                        <option>User</option>
-                    </select>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map(user => (
-                    <div key={user._id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-5 group hover:shadow-xl hover:shadow-slate-200/50 transition-all relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full -mr-10 -mt-10" />
-
-                        <div className="flex justify-between items-start relative z-10">
-                            <div className="w-14 h-14 bg-secondary text-primary rounded-2xl flex items-center justify-center text-xl font-serif font-black shadow-lg shadow-secondary/10">
-                                {user.name[0]}
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${user.role === 'admin' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                    }`}>
-                                    {user.role}
-                                </span>
-                                <p className="text-[10px] text-slate-300 mt-2 font-black uppercase tracking-tighter">{user._id}</p>
-                            </div>
-                        </div>
-
-                        <div className="relative z-10">
-                            <h3 className="font-bold text-secondary text-lg group-hover:text-primary transition-colors">{user.name}</h3>
-                            <div className="flex items-center space-x-2 text-xs text-slate-400 mt-1 font-medium">
-                                <Mail size={12} className="text-primary" />
-                                <span>{user.email}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between relative z-10">
-                            <div className="space-y-1">
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest leading-none">Registered</p>
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-secondary">
-                                    <Calendar size={12} className="text-primary" />
-                                    {new Date(user.createdAt).toLocaleDateString()}
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Status</p>
-                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${user.isVerified ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
-                                    {user.isVerified ? 'Verified' : 'Pending'}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Location Details */}
-                        <div className="grid grid-cols-2 gap-4 pb-4">
-                            <div className="space-y-1">
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest leading-none">Location</p>
-                                <p className="text-xs font-bold text-secondary truncate">{user.city}, {user.country}</p>
-                            </div>
-                            <div className="space-y-1 text-right">
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest leading-none">Contact</p>
-                                <p className="text-xs font-bold text-secondary">{user.mobile}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-5 border-t border-slate-50 relative z-10">
-                            <div className="space-y-1">
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest leading-none">Role Access</p>
-                                <p className="text-xs font-black text-primary uppercase tracking-widest">{user.role}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Balance</p>
-                                <p className="font-black text-xl text-secondary">₹{user.walletBalance.toLocaleString()}</p>
-                            </div>
-                        </div>
+            <div className="bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30">
+                    <div className="relative w-full md:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                        <input
+                            type="text"
+                            placeholder="SEARCH USERS BY NAME/EMAIL..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:ring-1 focus:ring-primary uppercase transition-all"
+                        />
                     </div>
-                ))}
-            </div>
-
-            {filtered.length === 0 && (
-                <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-slate-100">
-                    <p className="text-slate-400 text-sm italic">No users matching your search criteria.</p>
+                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-sm border border-slate-200">
+                        <Filter size={12} className="text-slate-400 shrink-0" />
+                        <select
+                            className="bg-transparent text-[9px] font-bold uppercase tracking-widest outline-none cursor-pointer"
+                            value={roleFilter}
+                            onChange={(e) => setRoleFilter(e.target.value)}
+                        >
+                            <option>All Roles</option>
+                            <option value="admin">Admins</option>
+                            <option value="user">Users</option>
+                        </select>
+                    </div>
                 </div>
-            )}
+
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[1200px] table-fixed">
+                        <thead>
+                            <tr className="bg-slate-50 text-[8px] lg:text-[9px] uppercase font-bold tracking-[0.15em] text-slate-500 border-b border-slate-200">
+                                <th className="px-6 py-4 text-left w-20">Veritas</th>
+                                <th className="px-6 py-4 text-left">Identity</th>
+                                <th className="px-6 py-4 text-left w-44">Contact Details</th>
+                                <th className="px-6 py-4 text-left w-40">Presence</th>
+                                <th className="px-6 py-4 text-center w-32">Role</th>
+                                <th className="px-6 py-4 text-center w-32">Status</th>
+                                <th className="px-6 py-4 text-right w-24">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className="py-20 text-center">
+                                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">Identity not found.</p>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filtered.map((u) => (
+                                    <tr key={u._id} className="hover:bg-slate-50/50 transition-all text-[11px]">
+                                        <td className="px-6 py-4">
+                                            {u.isVerified ?
+                                                <UserCheck size={16} className="text-emerald-500" /> :
+                                                <UserX size={16} className="text-rose-400" />
+                                            }
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-secondary uppercase tracking-tight leading-none mb-1">{u.name}</p>
+                                            <div className="flex items-center gap-1.5 text-slate-400">
+                                                <Mail size={10} className="text-primary" />
+                                                <span className="text-[9px] font-bold truncate">{u.email}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 text-secondary font-bold">
+                                                <Phone size={10} className="text-primary" />
+                                                <span>{u.mobile || '—'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 text-secondary font-bold uppercase tracking-tight">
+                                                <MapPin size={10} className="text-primary" />
+                                                <span className="truncate">{u.city || 'N/A'}, {u.country || 'N/A'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`px-2 py-0.5 rounded-sm text-[7px] font-bold uppercase tracking-widest border ${u.role === 'admin' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                }`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`px-2 py-0.5 rounded-sm text-[7px] font-bold uppercase tracking-widest border ${u.status === 'blocked' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                }`}>
+                                                {u.status || 'active'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => toggleStatus(u)}
+                                                className={`px-3 py-1 text-[8px] font-bold uppercase tracking-widest rounded-sm border transition-all ${u.status === 'blocked' ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                                                    }`}
+                                            >
+                                                {u.status === 'blocked' ? 'Unblock' : 'Block'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     );
 };
 
 export default Users;
-

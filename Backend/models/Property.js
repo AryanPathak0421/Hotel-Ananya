@@ -12,7 +12,9 @@ const propertySchema = new mongoose.Schema({
     checkOutTime: { type: String, default: '11:00 AM' },
     cancellationWindow: { type: String, default: '24 Hours' },
     logo: { type: String },
-    heroImage: { type: String }
+    heroImage: { type: String },
+    payAtHotelEnabled: { type: Boolean, default: true },
+    partialPaymentPercentage: { type: Number, default: 25 }
 }, { timestamps: true });
 
 const Property = mongoose.model('Property', propertySchema);

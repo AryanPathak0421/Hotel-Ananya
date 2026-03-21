@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useWallet } from '../../../context/WalletContext';
-import { User, Mail, Shield, LogOut, Settings, CreditCard, History, ChevronRight, Star, MapPin } from 'lucide-react';
+import { User, Mail, Shield, LogOut, Settings, CreditCard, History, ChevronRight, Star, MapPin, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, updateProfile } = useAuth();
     const { balance, transactions } = useWallet();
     const navigate = useNavigate();
+
+    const [bookingCount, setBookingCount] = useState(0);
 
     if (!user) {
         return (
@@ -28,13 +30,16 @@ const Profile = () => {
         );
     }
 
-    const [bookingCount, setBookingCount] = useState(0);
-
     useEffect(() => {
         if (user) {
+            // Fetch fresh user data to ensure profile picture and other info is in sync
+            api.get(`/auth/me/${user._id}`).then(res => {
+                if (res.data) updateProfile(res.data);
+            }).catch(e => console.error(e));
+
             api.get(`/bookings/my/${user._id}`).then(res => setBookingCount(res.data.length)).catch(e => console.error(e));
         }
-    }, [user]);
+    }, [user?._id]);
 
     const stats = [
         { label: 'Bookings', value: bookingCount },
@@ -60,8 +65,12 @@ const Profile = () => {
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                             {/* Avatar */}
-                            <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary font-serif text-xl font-bold">
-                                {user.name[0]}
+                            <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary font-serif text-xl font-bold overflow-hidden">
+                                {user.profilePicture ? (
+                                    <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    user.name[0]
+                                )}
                             </div>
                             <div>
                                 <h1 className="text-white font-bold text-lg leading-tight">{user.name}</h1>
@@ -76,9 +85,17 @@ const Profile = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-1 bg-primary/5 border border-primary/10 rounded-lg px-2 py-0.5">
-                            <Star size={8} className="text-primary" fill="currentColor" />
-                            <span className="text-primary text-[8px] font-bold">Premium</span>
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => navigate('/profile/details')} className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/10 hover:text-white transition-all">
+                                <Settings size={18} />
+                            </button>
+                            <button onClick={() => navigate('/notifications')} className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white/70 hover:bg-white/10 hover:text-white transition-all relative">
+                                <Bell size={18} />
+                                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full" />
+                            </button>
+                            <div className="w-10 h-10 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-center text-primary">
+                                <Star size={18} fill="currentColor" />
+                            </div>
                         </div>
                     </div>
 

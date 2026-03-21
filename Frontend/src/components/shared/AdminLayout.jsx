@@ -1,13 +1,20 @@
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Bed, Ticket, Users, Wallet, LogOut,
-    Settings, ShieldCheck, Tag, Zap, Percent, Building2, HardDrive, Image, Layers
+    Settings, ShieldCheck, Tag, Zap, Percent, Building2, HardDrive, Image, Layers, Menu, X as CloseIcon, MessageSquare, Scale, Copy
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const AdminLayout = () => {
     const location = useLocation();
     const { logout } = useAuth();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Close sidebar on route change (for mobile)
+    useEffect(() => {
+        setIsSidebarOpen(false);
+    }, [location]);
 
     const sections = [
         {
@@ -25,7 +32,9 @@ const AdminLayout = () => {
                 { name: 'Room Types', path: '/admin/rooms', icon: Bed },
                 { name: 'Room Variants', path: '/admin/rooms/variants', icon: Layers },
                 { name: 'Availability', path: '/admin/inventory/availability', icon: HardDrive },
+                { name: 'Bulk Update', path: '/admin/inventory/bulk-update', icon: Copy },
                 { name: 'Yield Rates', path: '/admin/inventory/rates', icon: Zap },
+                { name: 'Base Rates', path: '/admin/setup/pricing', icon: Tag },
             ]
         },
         {
@@ -35,16 +44,28 @@ const AdminLayout = () => {
                 { name: 'Tax Registry', path: '/admin/setup/taxes', icon: Percent },
                 { name: 'Service Charges', path: '/admin/setup/charges', icon: ShieldCheck },
                 { name: 'Rate Plans', path: '/admin/setup/rate-plans', icon: Zap },
+                { name: 'Guest Feedback', path: '/admin/messages', icon: MessageSquare },
+                { name: 'Legal Protocols', path: '/admin/setup/terms', icon: Scale },
                 { name: 'Media Assets', path: '/admin/media', icon: Image },
+                { name: 'Payment Setups', path: '/admin/setup/payments', icon: Wallet },
                 { name: 'Property Info', path: '/admin/setup/property', icon: Building2 },
+                { name: 'Other Services', path: '/admin/services', icon: Building2 },
             ]
         }
     ];
 
     return (
-        <div className="flex h-screen bg-slate-50 font-sans">
+        <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+            {/* Sidebar Overlay (Mobile only) */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-secondary/60 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-72 bg-secondary text-white flex flex-col shadow-2xl z-20">
+            <aside className={`fixed lg:static inset-y-0 left-0 w-72 bg-secondary text-white flex flex-col shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
                 <div className="p-8 border-b border-white/5 flex flex-col items-center shrink-0">
                     <img src="/logo.png" alt="Ananya Hotel" className="h-10 w-auto brightness-0 invert mb-3" />
                     <div className="flex items-center gap-2">
@@ -92,43 +113,51 @@ const AdminLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-grow flex flex-col overflow-hidden">
-                <header className="bg-white/80 backdrop-blur-md h-20 border-b flex items-center justify-between px-10 sticky top-0 z-10">
-                    <div className="flex flex-col">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">System Node</p>
-                        <h1 className="text-xl font-black text-secondary lowercase capitalize tracking-tighter">
-                            {location.pathname.split('/').pop()?.replace('-', ' ') || 'Insights Overview'}
-                        </h1>
+            <main className="flex-grow flex flex-col overflow-hidden min-w-0">
+                <header className="bg-white/80 backdrop-blur-md h-20 border-b flex items-center justify-between px-4 lg:px-10 sticky top-0 z-10 shrink-0">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-secondary lg:hidden hover:bg-primary hover:text-white transition-all active:scale-95"
+                        >
+                            <Menu size={20} />
+                        </button>
+                        <div className="flex flex-col">
+                            <p className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">System Node</p>
+                            <h1 className="text-sm lg:text-xl font-black text-secondary lowercase capitalize tracking-tighter truncate max-w-[150px] lg:max-w-none">
+                                {location.pathname.split('/').pop()?.replace('-', ' ') || 'Insights Overview'}
+                            </h1>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                        <button className="hidden lg:flex items-center gap-2 bg-amber-500 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-amber-500/20">
+                    <div className="flex items-center gap-3 lg:gap-6">
+                        <button className="hidden xl:flex items-center gap-2 bg-amber-500 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-amber-500/20">
                             <Building2 size={14} /> Switch Property
                         </button>
 
-                        <div className="hidden md:flex items-center gap-3 pr-6 border-r border-slate-100">
+                        <div className="hidden md:flex items-center gap-3 pr-4 lg:pr-6 border-r border-slate-100">
                             <div className="text-right">
-                                <p className="text-xs font-black text-secondary leading-none">Security Protocol</p>
-                                <p className="text-[10px] text-emerald-500 font-bold mt-1">Status: Active & Secure</p>
+                                <p className="text-[10px] font-black text-secondary leading-none">Security Protocol</p>
+                                <p className="text-[8px] text-emerald-500 font-bold mt-1 uppercase">Active</p>
                             </div>
                             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                <ShieldCheck size={18} />
+                                <ShieldCheck size={16} />
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-4 group cursor-pointer">
-                            <div className="text-right">
-                                <p className="text-sm font-extrabold text-secondary group-hover:text-primary transition-colors italic">Super Administrator</p>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Level 1 Authentication</p>
+                        <div className="flex items-center space-x-2 lg:space-x-4 group cursor-pointer">
+                            <div className="text-right hidden sm:block">
+                                <p className="text-xs font-extrabold text-secondary group-hover:text-primary transition-colors italic leading-none">Super Admin</p>
+                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-1">L1 AUTH</p>
                             </div>
-                            <div className="w-12 h-12 bg-secondary text-primary rounded-2xl flex items-center justify-center font-black text-lg border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg shadow-secondary/10">
+                            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-secondary text-primary rounded-xl lg:rounded-2xl flex items-center justify-center font-black text-sm lg:text-lg border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg shadow-secondary/10 shrink-0">
                                 SA
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <div className="flex-grow overflow-y-auto p-10 bg-slate-50/50 custom-scrollbar">
+                <div className="flex-grow overflow-y-auto p-4 lg:p-10 bg-slate-50/50 custom-scrollbar">
                     <Outlet />
                 </div>
             </main>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User } from 'lucide-react';
+import { Menu, X, User, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWallet } from '../../context/WalletContext';
 
@@ -67,6 +67,10 @@ const Navbar = () => {
                                 <p className={`text-[8px] font-bold uppercase tracking-widest ${isNavbarDark ? 'text-slate-400' : 'text-white/40'}`}>Private Balance</p>
                                 <p className={`text-sm font-bold ${isNavbarDark ? 'text-secondary' : 'text-white'}`}>₹{balance.toLocaleString()}</p>
                             </div>
+                            <Link to="/notifications" className={`p-2.5 rounded-full border transition-all duration-500 relative ${isNavbarDark ? 'border-primary/20 text-primary hover:bg-primary hover:text-white' : 'border-white/20 text-white hover:bg-white hover:text-secondary'
+                                }`}>
+                                <Bell size={18} />
+                            </Link>
                             <Link to="/profile" className={`p-2.5 rounded-full border transition-all duration-500 ${isNavbarDark ? 'border-primary/20 text-primary hover:bg-primary hover:text-white' : 'border-white/20 text-white hover:bg-white hover:text-secondary'
                                 }`}>
                                 <User size={18} />
@@ -80,14 +84,21 @@ const Navbar = () => {
                     )}
                 </div>
 
-                {/* Mobile Menu Button */}
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={`md:hidden p-2 transition-all duration-300 z-[70] relative ${isOpen ? 'text-white' : (isNavbarDark ? 'text-secondary' : 'text-white')
-                        }`}
-                >
-                    {isOpen ? <X size={28} /> : <Menu size={28} />}
-                </button>
+                {/* Mobile Actions */}
+                <div className="flex md:hidden items-center space-x-2">
+                    {user && (
+                        <Link to="/notifications" className={`p-2 transition-all duration-300 ${isNavbarDark ? 'text-secondary' : 'text-white'}`}>
+                            <Bell size={24} />
+                        </Link>
+                    )}
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        className={`p-2 transition-all duration-300 z-[70] relative ${isOpen ? 'text-white' : (isNavbarDark ? 'text-secondary' : 'text-white')
+                            }`}
+                    >
+                        {isOpen ? <X size={28} /> : <Menu size={28} />}
+                    </button>
+                </div>
             </div>
 
             {/* Premium Mobile Menu Overlay */}

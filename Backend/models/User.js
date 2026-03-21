@@ -55,6 +55,11 @@ const userSchema = new mongoose.Schema({
     walletBalance: {
         type: Number,
         default: 1000
+    },
+    status: {
+        type: String,
+        enum: ['active', 'blocked'],
+        default: 'active'
     }
 }, {
     timestamps: true

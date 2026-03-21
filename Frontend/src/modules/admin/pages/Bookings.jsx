@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../../../services/api';
-import { Search, Filter, Calendar, User, CreditCard, ChevronRight, CheckCircle, XCircle, Clock, Info } from 'lucide-react';
+import { Search, Filter, Download, Phone, CheckCircle, XCircle } from 'lucide-react';
 
 const Bookings = () => {
     const [bookings, setBookings] = useState([]);
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All Status');
+    const [statusFilter, setStatusFilter] = useState('All');
     const [loading, setLoading] = useState(true);
 
     const fetchBookings = async () => {
@@ -32,38 +32,71 @@ const Bookings = () => {
         const guestName = bk.user?.name || '';
         const bookingId = bk.bookingId || '';
         const matchesSearch = guestName.toLowerCase().includes(search.toLowerCase()) || bookingId.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = statusFilter === 'All Status' || bk.bookingStatus.toLowerCase() === statusFilter.toLowerCase();
+        const matchesStatus = statusFilter === 'All' || bk.bookingStatus.toLowerCase() === statusFilter.toLowerCase();
         return matchesSearch && matchesStatus;
     });
+
+    const downloadCSV = () => {
+        const headers = ["Status", "Guest Name", "Contact", "Booking Date", "Check-In", "Check-Out", "Room Category", "Payment Status", "Valuation"];
+        const rows = filtered.map(bk => [
+            bk.bookingStatus.toUpperCase(),
+            bk.user?.name || 'N/A',
+            bk.user?.mobile || 'N/A',
+            new Date(bk.createdAt).toLocaleDateString(),
+            bk.checkIn,
+            bk.checkOut,
+            `${bk.roomType?.name} - ${bk.variant?.name}`,
+            bk.paymentStatus.toUpperCase(),
+            bk.totalPrice
+        ]);
+
+        let csvContent = "data:text/csv;charset=utf-8,"
+            + headers.join(",") + "\n"
+            + rows.map(r => r.map(cell => `"${cell}"`).join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Ananya_Reservation_Ledger_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500 text-left">
-            <header className="flex justify-between items-center">
+        <div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500 text-left pb-10">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-black text-secondary lowercase capitalize tracking-tight">Reservation <span className="text-primary italic">Ledger</span></h1>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tracking {bookings.length} multifaceted guest stays.</p>
+                    <label className="text-[9px] font-bold text-primary uppercase tracking-[0.2em] mb-1 block">Operations Dashboard</label>
+                    <h1 className="text-xl lg:text-2xl font-bold text-secondary uppercase tracking-tight leading-none">Reservation <span className="text-primary italic">Ledger</span></h1>
                 </div>
+                <button
+                    onClick={downloadCSV}
+                    className="flex items-center gap-2 bg-secondary text-white px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-[9px] shadow-sm hover:bg-primary hover:text-secondary transition-all"
+                >
+                    <Download size={14} /> Export CSV
+                </button>
             </header>
 
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30 font-sans">
+            <div className="bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30">
                     <div className="relative w-full md:w-80">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                         <input
                             type="text"
-                            placeholder="Search guests, booking IDs..."
+                            placeholder="SEARCH BY GUEST OR ID..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all font-sans"
+                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:ring-1 focus:ring-primary/40 transition-all uppercase"
                         />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-100">
-                            <Filter size={14} className="text-slate-400" />
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-sm border border-slate-200">
+                            <Filter size={12} className="text-slate-400 shrink-0" />
                             <select
-                                className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer"
+                                className="bg-transparent text-[9px] font-bold uppercase tracking-widest outline-none cursor-pointer"
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
                             >
@@ -76,69 +109,88 @@ const Bookings = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[1200px] table-fixed">
                         <thead>
-                            <tr className="bg-slate-50/50 text-[10px] uppercase font-black tracking-[0.2em] text-slate-400 border-b border-slate-100">
-                                <th className="px-8 py-5 text-left">Stay Signature</th>
-                                <th className="px-6 py-5 text-left">Guest Profile</th>
-                                <th className="px-6 py-5 text-center">Lifecycle</th>
-                                <th className="px-6 py-5 text-left">Valuation</th>
-                                <th className="px-8 py-5 text-right">Protocol</th>
+                            <tr className="bg-slate-50 text-[8px] lg:text-[9px] uppercase font-bold tracking-[0.15em] text-slate-500 border-b border-slate-200">
+                                <th className="px-6 py-4 text-left w-32">Status</th>
+                                <th className="px-6 py-4 text-left">Guest Name</th>
+                                <th className="px-6 py-4 text-left w-44">Contact Number</th>
+                                <th className="px-6 py-4 text-center w-36">Booking Date</th>
+                                <th className="px-6 py-4 text-left w-60">Room Category</th>
+                                <th className="px-6 py-4 text-center w-52">Stay Duration</th>
+                                <th className="px-6 py-4 text-center w-36">Payment</th>
+                                <th className="px-6 py-4 text-right w-24">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filtered.map((bk) => (
-                                <tr key={bk._id} className="hover:bg-slate-50/80 transition-all group">
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-1.5 h-12 bg-primary rounded-full" />
-                                            <div>
-                                                <p className="font-black text-secondary uppercase tracking-[0.1em] leading-none mb-1 text-sm">{bk.bookingId}</p>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{bk.roomType?.name} · {bk.variant?.name} · {bk.roomsCount} Rooms</p>
-                                                <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1">
-                                                    {bk.plan?.ratePlan?.code ? `${bk.plan.ratePlan.code} - ` : ''}{bk.plan?.planName}
-                                                </p>
-                                            </div>
-                                        </div>
+                        <tbody className="divide-y divide-slate-100">
+                            {filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="py-20 text-center">
+                                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">No records found.</p>
                                     </td>
-                                    <td className="px-6 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-secondary text-primary rounded-xl flex items-center justify-center font-black text-xs border border-primary/20">
-                                                {bk.user?.name[0]}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-secondary text-xs uppercase leading-none mb-1">{bk.user?.name}</p>
-                                                <p className="text-[9px] text-slate-400 font-medium lowercase tracking-tighter">{bk.user?.email}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-6">
-                                        <div className="flex flex-col items-center justify-center">
-                                            <span className="text-[10px] font-black text-secondary bg-slate-100 px-3 py-1 rounded-lg tabular-nums tracking-tighter">{bk.checkIn}</span>
-                                            <ChevronRight size={10} className="my-1.5 text-primary rotate-90 md:rotate-0" />
-                                            <span className="text-[10px] font-black text-primary bg-primary/5 px-3 py-1 rounded-lg tabular-nums tracking-tighter">{bk.checkOut}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-6">
-                                        <p className="font-black text-secondary text-sm font-mono tracking-tighter">₹{bk.totalPrice.toLocaleString()}</p>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">via {bk.paymentMethod}</p>
-                                    </td>
-                                    <td className="px-8 py-6 text-right">
-                                        <div className="flex flex-col items-end gap-2">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${bk.bookingStatus === 'confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                bk.bookingStatus === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'
+                                </tr>
+                            ) : (
+                                filtered.map((bk) => (
+                                    <tr key={bk._id} className="hover:bg-slate-50/50 transition-all text-[11px]">
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-block px-2 py-0.5 rounded-sm text-[7px] font-bold uppercase tracking-widest border ${bk.bookingStatus === 'confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                bk.bookingStatus === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                                    'bg-slate-50 text-slate-400 border-slate-200'
                                                 }`}>
                                                 {bk.bookingStatus}
                                             </span>
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {bk.bookingStatus === 'pending' && <button onClick={() => updateStatus(bk._id, 'confirmed')} className="p-1.5 text-emerald-600 bg-emerald-50 rounded-lg"><CheckCircle size={12} /></button>}
-                                                <button onClick={() => updateStatus(bk._id, 'cancelled')} className="p-1.5 text-rose-500 bg-rose-50 rounded-lg"><XCircle size={12} /></button>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-secondary uppercase tracking-tight leading-none mb-1">{bk.user?.name}</p>
+                                            <p className="text-[8px] text-slate-400 uppercase tracking-widest leading-none truncate">{bk.user?.email}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-1.5 text-secondary font-bold">
+                                                <Phone size={10} className="text-primary shrink-0" />
+                                                <span>{bk.user?.mobile || '—'}</span>
                                             </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <p className="text-[10px] font-bold text-secondary">{new Date(bk.createdAt).toLocaleDateString('en-GB')}</p>
+                                            <p className="text-[7px] text-slate-400 uppercase tracking-widest leading-none mt-1">Ref: {bk.bookingId}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-secondary uppercase tracking-tight leading-none">{bk.roomType?.name}</p>
+                                            <p className="text-[8px] text-slate-400 uppercase tracking-widest mt-1 italic">{bk.variant?.name}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-3">
+                                                <div className="text-center">
+                                                    <span className="text-[8px] font-bold text-slate-400 block uppercase">In</span>
+                                                    <span className="font-bold text-secondary whitespace-nowrap">{new Date(bk.checkIn).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                                                </div>
+                                                <div className="h-4 w-[1px] bg-slate-200 rotate-[30deg]" />
+                                                <div className="text-center">
+                                                    <span className="text-[8px] font-bold text-slate-400 block uppercase">Out</span>
+                                                    <span className="font-bold text-secondary whitespace-nowrap">{new Date(bk.checkOut).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm border ${bk.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                bk.paymentStatus === 'partial' ? 'text-amber-50 text-amber-600 border-amber-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+                                                }`}>
+                                                {bk.paymentStatus}
+                                            </span>
+                                            <p className="text-[7px] font-bold text-slate-400 mt-1 uppercase tracking-tighter tabular-nums">₹{bk.totalPrice?.toLocaleString()}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-1.5">
+                                                {bk.bookingStatus === 'pending' && (
+                                                    <button onClick={() => updateStatus(bk._id, 'confirmed')} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-sm border border-emerald-100"><CheckCircle size={14} /></button>
+                                                )}
+                                                <button onClick={() => updateStatus(bk._id, 'cancelled')} className="p-1 text-rose-500 hover:bg-rose-50 rounded-sm border border-rose-100"><XCircle size={14} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

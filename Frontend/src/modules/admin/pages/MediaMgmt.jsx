@@ -100,25 +100,25 @@ const MediaMgmt = () => {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <header className="flex justify-between items-center">
+        <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 text-left">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-secondary">Media Asset Library</h1>
-                    <p className="text-sm text-slate-500 font-medium">Manage visual storytelling assets for banners and galleries.</p>
+                    <h1 className="text-xl lg:text-2xl font-black text-secondary lowercase capitalize tracking-tight leading-none mb-1">Media <span className="text-primary italic">Vault</span></h1>
+                    <p className="text-[10px] lg:text-xs text-slate-400 font-medium tracking-tight mt-1">Manage visual storytelling assets for banners and galleries.</p>
                 </div>
                 <button
                     onClick={() => {
                         setFormData({ ...formData, type: activeTab });
                         setIsModalOpen(true);
                     }}
-                    className="bg-secondary text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-secondary/20 active:scale-95"
+                    className="w-full sm:w-auto bg-secondary text-white px-6 lg:px-8 py-3.5 rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-secondary/20 active:scale-95 group"
                 >
-                    <Plus size={16} /> Upload New Asset
+                    <Plus size={14} className="group-hover:rotate-90 transition-transform" /> Upload New Asset
                 </button>
             </header>
 
             {/* Tabs */}
-            <div className="flex gap-4 border-b border-slate-100">
+            <div className="flex bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-inner overflow-x-auto custom-scrollbar no-scrollbar">
                 {[
                     { id: 'banner', label: 'Hero Banners', icon: Globe },
                     { id: 'gallery', label: 'Photo Gallery', icon: Layout },
@@ -126,12 +126,13 @@ const MediaMgmt = () => {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-6 py-4 text-xs font-black uppercase tracking-widest transition-all relative
-                            ${activeTab === tab.id ? 'text-primary' : 'text-slate-400 hover:text-secondary'}`}
+                        className={`flex flex-1 items-center justify-center gap-2.5 px-6 lg:px-8 py-3 lg:py-3.5 text-[9px] lg:text-[10px] font-black uppercase tracking-widest transition-all rounded-[1.25rem] whitespace-nowrap
+                            ${activeTab === tab.id
+                                ? 'bg-white text-primary shadow-lg shadow-primary/5 border border-primary/10'
+                                : 'text-slate-400 hover:text-secondary hover:bg-white/50'}`}
                     >
-                        <tab.icon size={14} />
+                        <tab.icon size={12} className={activeTab === tab.id ? 'text-primary' : 'text-slate-300'} />
                         {tab.label}
-                        {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
                     </button>
                 ))}
             </div>
@@ -142,16 +143,16 @@ const MediaMgmt = () => {
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Synchronizing Vault...</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-8 pb-20">
                     {media.length === 0 ? (
-                        <div className="col-span-full py-20 text-center space-y-4">
+                        <div className="col-span-full py-20 text-center space-y-4 bg-white/50 rounded-[2.5rem] border border-dashed border-slate-200">
                             <Image size={40} className="mx-auto text-slate-200" />
-                            <p className="text-slate-400 text-sm italic">No assets found in this category.</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">No assets detected in sector.</p>
                         </div>
                     ) : (
                         media.map((item) => (
-                            <div key={item._id} className="group bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500">
-                                <div className="relative h-48 overflow-hidden">
+                            <div key={item._id} className="group bg-white rounded-[1.5rem] lg:rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 hover:-translate-y-1">
+                                <div className="relative h-40 lg:h-48 overflow-hidden">
                                     <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                     <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
                                         <button
@@ -191,22 +192,22 @@ const MediaMgmt = () => {
             {/* Upload Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-secondary/90 backdrop-blur-xl" onClick={() => !uploading && setIsModalOpen(false)} />
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-10 relative z-10 animate-in zoom-in duration-300 shadow-2xl">
+                    <div className="absolute inset-0 bg-secondary/80 backdrop-blur-md" onClick={() => !uploading && setIsModalOpen(false)} />
+                    <div className="bg-white rounded-[2rem] lg:rounded-[3rem] w-full max-w-xl p-6 lg:p-12 relative z-10 animate-in zoom-in duration-300 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                         <button
                             disabled={uploading}
                             onClick={() => setIsModalOpen(false)}
-                            className="absolute top-8 right-8 text-slate-400 hover:text-secondary disabled:opacity-30"
+                            className="absolute top-6 right-6 lg:top-8 lg:right-8 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-secondary active:scale-90"
                         >
                             <X size={20} />
                         </button>
 
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-secondary lowercase capitalize">Ingest <span className="text-primary italic">Media</span></h2>
-                            <p className="text-sm text-slate-400 font-medium">Propagate visual assets to our global CDN.</p>
+                        <div className="mb-8 lg:mb-10">
+                            <h2 className="text-xl lg:text-3xl font-black text-secondary lowercase capitalize tracking-tight">Ingest <span className="text-primary italic">Media</span></h2>
+                            <p className="text-[10px] lg:text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Propagate visual assets to our global CDN.</p>
                         </div>
 
-                        <form onSubmit={handleUpload} className="space-y-6">
+                        <form onSubmit={handleUpload} className="space-y-6 lg:space-y-8 text-left">
                             {/* File Upload Area */}
                             <div className={`relative h-56 rounded-[2rem] border-2 border-dashed transition-all flex flex-col items-center justify-center gap-4 overflow-hidden
                                 ${previewUrl ? 'border-primary/50 bg-slate-50' : 'border-slate-200 hover:border-primary/30 hover:bg-slate-50'}`}>

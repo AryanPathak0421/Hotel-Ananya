@@ -69,39 +69,39 @@ const Taxes = () => {
     );
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <header className="flex justify-between items-center">
+        <div className="space-y-6 lg:space-y-10 animate-in fade-in duration-500 text-left">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-secondary">Tax Registry</h1>
-                    <p className="text-sm text-slate-500 font-medium">Manage governmental and property-level tax structures.</p>
+                    <h1 className="text-xl lg:text-3xl font-black text-secondary lowercase capitalize tracking-tight leading-none mb-1">Tax <span className="text-primary italic">Registry</span></h1>
+                    <p className="text-[10px] lg:text-xs text-slate-400 font-medium tracking-tight mt-1">Manage governmental and property-level tax structures.</p>
                 </div>
                 <button
                     onClick={() => handleOpenModal()}
-                    className="bg-secondary text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-secondary/20 active:scale-95"
+                    className="w-full sm:w-auto bg-secondary text-white px-6 lg:px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl hover:shadow-secondary/20 active:scale-95 group"
                 >
-                    <Plus size={16} /> Add New Tax
+                    <Plus size={16} className="group-hover:rotate-90 transition-transform" /> Add New Tax
                 </button>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-8">
                 {taxes.map(tax => (
-                    <div key={tax._id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl transition-all">
+                    <div key={tax._id} className="bg-white p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:shadow-slate-200/50 transition-all hover:-translate-y-1">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150" />
 
-                        <div className="flex justify-between items-start mb-6 relative z-10">
-                            <div className="p-3 bg-secondary text-primary rounded-2xl shadow-lg shadow-secondary/10">
+                        <div className="flex justify-between items-start mb-6 lg:mb-8 relative z-10">
+                            <div className="p-3 bg-secondary text-primary rounded-xl lg:rounded-2xl shadow-lg shadow-secondary/10 shrink-0">
                                 <ShieldCheck size={20} />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                 <button
                                     onClick={() => handleOpenModal(tax)}
-                                    className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-secondary transition-all"
+                                    className="p-2 bg-slate-50 hover:bg-primary/10 rounded-xl text-slate-400 hover:text-primary transition-all active:scale-90"
                                 >
                                     <Edit2 size={14} />
                                 </button>
                                 <button
                                     onClick={() => handleDelete(tax._id)}
-                                    className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 hover:text-red-500 transition-all"
+                                    className="p-2 bg-slate-50 hover:bg-rose-50 rounded-xl text-slate-400 hover:text-rose-500 transition-all active:scale-90"
                                 >
                                     <Trash2 size={14} />
                                 </button>
@@ -109,21 +109,21 @@ const Taxes = () => {
                         </div>
 
                         <div className="relative z-10">
-                            <h3 className="text-lg font-bold text-secondary">{tax.name}</h3>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 lowercase truncate max-w-[100px]">{tax._id}</p>
+                            <h3 className="text-lg lg:text-xl font-black text-secondary lowercase capitalize truncate">{tax.name}</h3>
+                            <p className="text-[8px] lg:text-[9px] text-slate-300 font-black uppercase tracking-widest mt-1 truncate block opacity-50">ID: {tax._id?.slice(-8)}</p>
 
-                            <div className="mt-6 flex items-end justify-between">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Applied Rate</p>
+                            <div className="mt-6 lg:mt-8 flex items-end justify-between">
+                                <div className="space-y-1 flex-1">
+                                    <p className="text-[8px] lg:text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Applied Rate</p>
                                     <div className="flex items-center gap-2">
-                                        {tax.type === 'Percentage' ? <Percent size={14} className="text-primary" /> : <IndianRupee size={14} className="text-primary" />}
-                                        <span className="text-2xl font-black text-secondary">{tax.rate}{tax.type === 'Percentage' ? '%' : ''}</span>
+                                        {tax.type === 'Percentage' ? <Percent size={14} className="text-primary shrink-0" /> : <IndianRupee size={14} className="text-primary shrink-0" />}
+                                        <span className="text-2xl lg:text-3xl font-black text-secondary tabular-nums leading-none">{tax.rate}{tax.type === 'Percentage' ? '%' : ''}</span>
                                     </div>
                                 </div>
-                                <button className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border transition-all ${tax.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'
+                                <div className={`px-4 py-1.5 text-[8px] lg:text-[9px] font-black uppercase tracking-widest rounded-full border shadow-sm transition-all whitespace-nowrap ${tax.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'
                                     }`}>
                                     {tax.status}
-                                </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -132,49 +132,50 @@ const Taxes = () => {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-secondary/80 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 relative z-10 animate-in zoom-in duration-300">
-                        <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-slate-400 hover:text-secondary"><X size={20} /></button>
-                        <h2 className="text-2xl font-bold text-secondary mb-2">{editingTax ? 'Refine Tax Policy' : 'Establish New Tax'}</h2>
-                        <p className="text-sm text-slate-500 mb-8 italic">Specify the magnitude and classification for regulatory alignment.</p>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-secondary/80 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
+                    <div className="bg-white rounded-[2rem] lg:rounded-[3.5rem] w-full max-w-lg p-8 lg:p-12 relative z-10 animate-in zoom-in duration-300 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+                        <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 lg:top-10 lg:right-10 p-2 text-slate-400 hover:text-secondary hover:bg-slate-50 rounded-xl transition-all active:scale-90"><X size={20} /></button>
+                        <h2 className="text-xl lg:text-3xl font-black text-secondary lowercase capitalize tracking-tight mb-2 pr-10">{editingTax ? 'Refine Tax <span className="text-primary italic">Policy</span>' : 'Establish <span className="text-primary italic">New Tax</span>'}</h2>
+                        <p className="text-[10px] lg:text-sm text-slate-500 mb-8 lg:mb-10 font-bold italic lowercase opacity-70">Specify the magnitude and classification for regulatory alignment.</p>
 
-                        <form onSubmit={handleSave} className="space-y-6">
+                        <form onSubmit={handleSave} className="space-y-6 lg:space-y-8 text-left">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tax Nomenclature</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tax Nomenclature</label>
                                 <input
                                     required
                                     type="text"
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="e.g. Service VAT"
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl px-5 lg:px-6 py-3.5 lg:py-4.5 font-bold outline-none focus:ring-2 focus:ring-primary/20 shadow-inner text-sm lg:text-base"
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Applied Rate</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Applied Rate</label>
                                     <input
                                         required
                                         type="number"
                                         value={formData.rate}
                                         onChange={e => setFormData({ ...formData, rate: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl px-5 lg:px-6 py-3.5 lg:py-4.5 font-bold outline-none focus:ring-2 focus:ring-primary/20 shadow-inner text-sm lg:text-base"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Valuation Type</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Valuation Type</label>
                                     <select
                                         value={formData.type}
                                         onChange={e => setFormData({ ...formData, type: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl lg:rounded-2xl px-5 lg:px-6 py-3.5 lg:py-4.5 font-black uppercase tracking-[0.1em] text-[10px] outline-none focus:ring-2 focus:ring-primary/20 shadow-inner"
                                     >
                                         <option value="Percentage">Percentage (%)</option>
                                         <option value="Fixed">Fixed (₹)</option>
                                     </select>
                                 </div>
                             </div>
-                            <button className="w-full bg-secondary text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-slate-800 transition-all shadow-xl shadow-secondary/10">
+                            <button className="w-full bg-secondary text-white py-4 lg:py-5 rounded-xl lg:rounded-[1.5rem] font-black uppercase tracking-[0.3em] text-[10px] lg:text-xs hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-xl shadow-secondary/10 flex items-center justify-center gap-2 group">
+                                <ShieldCheck size={14} className="group-hover:rotate-12 transition-transform" />
                                 {editingTax ? 'Update Registry' : 'Commit to Database'}
                             </button>
                         </form>

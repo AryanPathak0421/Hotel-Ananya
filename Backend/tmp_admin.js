@@ -9,19 +9,31 @@ const createAdmin = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
 
-        const existingAdmin = await User.findOne({ email: 'admin@ananya.com' });
+        const email = 'a@gmail.com';
+        const password = '1234';
+
+        const existingAdmin = await User.findOne({ email });
         if (existingAdmin) {
-            console.log('Admin already exists');
+            existingAdmin.password = password; // Hashing done by middleware
+            existingAdmin.role = 'admin';
+            existingAdmin.mobile = '0000000000';
+            existingAdmin.city = 'Digha';
+            existingAdmin.country = 'India';
+            existingAdmin.isVerified = true;
+            await existingAdmin.save();
+            console.log('Admin password updated for a@gmail.com');
         } else {
-            const hashedPassword = await bcrypt.hash('admin123', 10);
             await User.create({
                 name: 'Super Admin',
-                email: 'admin@ananya.com',
-                password: hashedPassword,
+                email,
+                password, // Hashing done by middleware
                 role: 'admin',
-                walletBalance: 0
+                mobile: '0000000000',
+                city: 'Digha',
+                country: 'India',
+                isVerified: true
             });
-            console.log('Admin created: admin@ananya.com / admin123');
+            console.log('Admin created: a@gmail.com / 1234');
         }
         process.exit();
     } catch (error) {
