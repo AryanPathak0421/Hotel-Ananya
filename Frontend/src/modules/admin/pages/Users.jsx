@@ -78,19 +78,19 @@ const Users = () => {
         <div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500 text-left pb-10">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <label className="text-[9px] font-bold text-primary uppercase tracking-[0.2em] mb-1 block">Account Management</label>
-                    <h1 className="text-xl lg:text-2xl font-bold text-secondary uppercase tracking-tight leading-none">Users <span className="text-primary italic">Registry</span></h1>
+                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">Account Management</label>
+                    <h1 className="text-xl lg:text-3xl font-black text-secondary lowercase capitalize tracking-tighter leading-none">Users <span className="text-emerald-600 italic">Registry</span></h1>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-secondary px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-[9px] shadow-sm hover:scale-105 active:scale-95 transition-all"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary text-secondary px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:shadow-emerald-600/20 active:scale-95 transition-all"
                     >
                         <Shield size={14} /> Add Staff
                     </button>
                     <button
                         onClick={downloadCSV}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-secondary text-white px-4 py-2.5 rounded-sm font-bold uppercase tracking-widest text-[9px] shadow-sm hover:bg-primary hover:text-secondary transition-all"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-secondary text-white px-6 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
                     >
                         <Download size={14} /> Export CSV
                     </button>
@@ -141,21 +141,21 @@ const Users = () => {
             )}
 
             <div className="bg-white rounded-sm border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30">
+                <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30">
                     <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input
                             type="text"
-                            placeholder="SEARCH USERS BY NAME/EMAIL..."
+                            placeholder="Search by name or email..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:ring-1 focus:ring-primary uppercase transition-all"
+                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-emerald-500 uppercase transition-all shadow-sm"
                         />
                     </div>
-                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-sm border border-slate-200">
-                        <Filter size={12} className="text-slate-400 shrink-0" />
+                    <div className="w-full md:w-auto flex items-center gap-2 bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm">
+                        <Filter size={14} className="text-slate-400 shrink-0" />
                         <select
-                            className="bg-transparent text-[9px] font-bold uppercase tracking-widest outline-none cursor-pointer"
+                            className="w-full bg-transparent text-xs font-bold uppercase tracking-widest outline-none cursor-pointer"
                             value={roleFilter}
                             onChange={(e) => setRoleFilter(e.target.value)}
                         >
@@ -166,17 +166,17 @@ const Users = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full min-w-[1200px] table-fixed">
+                <div className="overflow-x-auto custom-scrollbar table-responsive-container">
+                    <table className="w-full min-w-[1000px] border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 text-[8px] lg:text-[9px] uppercase font-bold tracking-[0.15em] text-slate-500 border-b border-slate-200">
-                                <th className="px-6 py-4 text-left w-20">Veritas</th>
-                                <th className="px-6 py-4 text-left">Identity</th>
-                                <th className="px-6 py-4 text-left w-44">Contact Details</th>
-                                <th className="px-6 py-4 text-left w-40">Presence</th>
-                                <th className="px-6 py-4 text-center w-32">Role</th>
-                                <th className="px-6 py-4 text-center w-32">Status</th>
-                                <th className="px-6 py-4 text-right w-24">Actions</th>
+                            <tr className="bg-slate-50 text-[9px] uppercase font-black tracking-[0.15em] text-slate-500 border-b border-slate-200">
+                                <th className="px-6 py-5 text-left sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Veritas</th>
+                                <th className="px-6 py-5 text-left">Identity</th>
+                                <th className="px-6 py-5 text-left">Contact</th>
+                                <th className="px-6 py-5 text-left">Presence</th>
+                                <th className="px-6 py-5 text-center">Role</th>
+                                <th className="px-6 py-5 text-center">Status</th>
+                                <th className="px-6 py-5 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -188,14 +188,14 @@ const Users = () => {
                                 </tr>
                             ) : (
                                 filtered.map((u) => (
-                                    <tr key={u._id} className="hover:bg-slate-50/50 transition-all text-[11px]">
-                                        <td className="px-6 py-4">
+                                    <tr key={u._id} className="hover:bg-slate-50/50 transition-all text-xs border-b border-slate-50 last:border-0">
+                                        <td className="px-6 py-5 sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-100">
                                             {u.isVerified ?
-                                                <UserCheck size={16} className="text-emerald-500" /> :
-                                                <UserX size={16} className="text-rose-400" />
+                                                <UserCheck size={18} className="text-emerald-500" /> :
+                                                <UserX size={18} className="text-rose-400" />
                                             }
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-5">
                                             <p className="font-bold text-secondary uppercase tracking-tight leading-none mb-1">{u.name}</p>
                                             <div className="flex items-center gap-1.5 text-slate-400">
                                                 <Mail size={10} className="text-primary" />

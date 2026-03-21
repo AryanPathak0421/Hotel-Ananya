@@ -61,24 +61,64 @@
   }
 }
 
-/* Lenis CSS */
-html.lenis,
-html.lenis body {
-  height: auto;
+/* Custom Scrollbar for modern feel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
 }
 
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full transition-colors;
 }
 
-.lenis.lenis-stopped {
-  overflow: hidden;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300;
 }
 
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
+/* Table responsiveness enhancement */
+.table-responsive-container {
+  @apply w-full overflow-x-auto custom-scrollbar relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Card-like behavior for mobile tables can be handled with specific classes if needed, 
+   but for now, we ensure the overflow is smooth and visible. */
+
+@media (max-width: 640px) {
+
+  .btn-premium,
+  .btn-outline {
+    @apply px-6 py-3 text-[8px];
+  }
+}
+
+/* Animations and transitions */
+.animate-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

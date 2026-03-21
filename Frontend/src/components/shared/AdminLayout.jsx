@@ -34,7 +34,7 @@ const AdminLayout = () => {
                 { name: 'Availability', path: '/admin/inventory/availability', icon: HardDrive },
                 { name: 'Bulk Update', path: '/admin/inventory/bulk-update', icon: Copy },
                 { name: 'Yield Rates', path: '/admin/inventory/rates', icon: Zap },
-                { name: 'Base Rates', path: '/admin/setup/pricing', icon: Tag },
+                { name: 'Yield Management', path: '/admin/setup/pricing', icon: Tag },
             ]
         },
         {
@@ -66,7 +66,13 @@ const AdminLayout = () => {
 
             {/* Sidebar */}
             <aside className={`fixed lg:static inset-y-0 left-0 w-72 bg-secondary text-white flex flex-col shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-                <div className="p-8 border-b border-white/5 flex flex-col items-center shrink-0">
+                <div className="p-8 border-b border-white/5 flex flex-col items-center shrink-0 relative">
+                    <button
+                        onClick={() => setIsSidebarOpen(false)}
+                        className="lg:hidden absolute top-6 right-6 p-2 text-white/40 hover:text-white transition-colors"
+                    >
+                        <CloseIcon size={20} />
+                    </button>
                     <img src="/logo.png" alt="Ananya Hotel" className="h-10 w-auto brightness-0 invert mb-3" />
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -107,33 +113,31 @@ const AdminLayout = () => {
                         className="flex items-center justify-center space-x-3 w-full px-4 py-3.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-2xl transition-all duration-500 group shadow-inner"
                     >
                         <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
-                        <span className="text-xs font-black uppercase tracking-widest">Terminate Session</span>
+                        <span className="text-xs font-black uppercase tracking-widest leading-none">Terminate Session</span>
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-grow flex flex-col overflow-hidden min-w-0">
-                <header className="bg-white/80 backdrop-blur-md h-20 border-b flex items-center justify-between px-4 lg:px-10 sticky top-0 z-10 shrink-0">
-                    <div className="flex items-center gap-4">
+            <main className="flex-grow flex flex-col overflow-hidden min-w-0 relative">
+                <header className="bg-white/90 backdrop-blur-xl h-16 lg:h-20 border-b border-slate-100 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-30 shrink-0">
+                    <div className="flex items-center gap-3 lg:gap-4">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-secondary lg:hidden hover:bg-primary hover:text-white transition-all active:scale-95"
+                            className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-secondary lg:hidden hover:bg-primary hover:text-white transition-all active:scale-95 flex items-center justify-center shrink-0"
                         >
                             <Menu size={20} />
                         </button>
-                        <div className="flex flex-col">
-                            <p className="text-[8px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">System Node</p>
-                            <h1 className="text-sm lg:text-xl font-black text-secondary lowercase capitalize tracking-tighter truncate max-w-[150px] lg:max-w-none">
+                        <div className="flex flex-col min-w-0">
+                            <p className="text-[7px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">System Node</p>
+                            <h1 className="text-xs lg:text-xl font-black text-secondary lowercase capitalize tracking-tighter truncate max-w-[120px] sm:max-w-[200px] lg:max-w-none">
                                 {location.pathname.split('/').pop()?.replace('-', ' ') || 'Insights Overview'}
                             </h1>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 lg:gap-6">
-                        <button className="hidden xl:flex items-center gap-2 bg-amber-500 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-amber-500/20">
-                            <Building2 size={14} /> Switch Property
-                        </button>
+                    <div className="flex items-center gap-2 lg:gap-6">
+
 
                         <div className="hidden md:flex items-center gap-3 pr-4 lg:pr-6 border-r border-slate-100">
                             <div className="text-right">
@@ -150,14 +154,14 @@ const AdminLayout = () => {
                                 <p className="text-xs font-extrabold text-secondary group-hover:text-primary transition-colors italic leading-none">Super Admin</p>
                                 <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-1">L1 AUTH</p>
                             </div>
-                            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-secondary text-primary rounded-xl lg:rounded-2xl flex items-center justify-center font-black text-sm lg:text-lg border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg shadow-secondary/10 shrink-0">
+                            <div className="w-8 h-8 lg:w-12 lg:h-12 bg-secondary text-primary rounded-lg lg:rounded-2xl flex items-center justify-center font-black text-xs lg:text-lg border-2 border-primary/20 group-hover:border-primary transition-all shadow-lg shadow-secondary/10 shrink-0">
                                 SA
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <div className="flex-grow overflow-y-auto p-4 lg:p-10 bg-slate-50/50 custom-scrollbar">
+                <div className="flex-grow overflow-y-auto p-4 lg:p-10 bg-slate-50/50 custom-scrollbar scroll-smooth">
                     <Outlet />
                 </div>
             </main>
@@ -166,4 +170,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

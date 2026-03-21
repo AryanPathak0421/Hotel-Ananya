@@ -109,18 +109,18 @@ const Bookings = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full min-w-[1200px] table-fixed">
+                <div className="overflow-x-auto custom-scrollbar table-responsive-container">
+                    <table className="w-full min-w-[1100px] border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 text-[8px] lg:text-[9px] uppercase font-bold tracking-[0.15em] text-slate-500 border-b border-slate-200">
-                                <th className="px-6 py-4 text-left w-32">Status</th>
-                                <th className="px-6 py-4 text-left">Guest Name</th>
-                                <th className="px-6 py-4 text-left w-44">Contact Number</th>
-                                <th className="px-6 py-4 text-center w-36">Booking Date</th>
-                                <th className="px-6 py-4 text-left w-60">Room Category</th>
-                                <th className="px-6 py-4 text-center w-52">Stay Duration</th>
-                                <th className="px-6 py-4 text-center w-36">Payment</th>
-                                <th className="px-6 py-4 text-right w-24">Actions</th>
+                            <tr className="bg-slate-50 text-[9px] uppercase font-black tracking-[0.15em] text-slate-500 border-b border-slate-200">
+                                <th className="px-6 py-5 text-left sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Status</th>
+                                <th className="px-6 py-5 text-left">Identity</th>
+                                <th className="px-6 py-5 text-left">Contact</th>
+                                <th className="px-6 py-5 text-center">Ref/Date</th>
+                                <th className="px-6 py-5 text-left">Category</th>
+                                <th className="px-6 py-5 text-center">Duration</th>
+                                <th className="px-6 py-5 text-center">Payment</th>
+                                <th className="px-6 py-5 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -132,9 +132,9 @@ const Bookings = () => {
                                 </tr>
                             ) : (
                                 filtered.map((bk) => (
-                                    <tr key={bk._id} className="hover:bg-slate-50/50 transition-all text-[11px]">
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-block px-2 py-0.5 rounded-sm text-[7px] font-bold uppercase tracking-widest border ${bk.bookingStatus === 'confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                    <tr key={bk._id} className="hover:bg-slate-50/50 transition-all text-xs border-b border-slate-50 last:border-0 group">
+                                        <td className="px-6 py-5 sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-100">
+                                            <span className={`inline-block px-2 py-0.5 rounded-sm text-[7px] font-black uppercase tracking-widest border ${bk.bookingStatus === 'confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                                 bk.bookingStatus === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                                                     'bg-slate-50 text-slate-400 border-slate-200'
                                                 }`}>

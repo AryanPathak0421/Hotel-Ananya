@@ -86,7 +86,7 @@ const Charges = () => {
             </header>
 
             <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto custom-scrollbar">
+                <div className="table-responsive-container">
                     <table className="w-full text-left min-w-[800px] lg:min-w-0">
                         <thead>
                             <tr className="bg-slate-50/50 text-[8px] lg:text-[10px] uppercase font-black tracking-[0.2em] text-slate-400 border-b border-slate-100">

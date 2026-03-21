@@ -205,22 +205,7 @@ const PricingMgmt = () => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3 lg:gap-4 pt-6 lg:pt-8 border-t border-slate-50 relative z-10">
-                                    {[
-                                        { label: 'Primary', value: `₹${plan.adult1Price}`, icon: '1P' },
-                                        { label: 'Dual', value: `₹${plan.adult2Price}`, icon: '2P' },
-                                        { label: 'Extra', value: `₹${plan.extraAdultPrice}`, color: 'text-emerald-600' },
-                                        { label: 'Child', value: `₹${plan.childPrice}` },
-                                    ].map(({ label, value, icon, color = 'text-secondary' }) => (
-                                        <div key={label} className="bg-slate-50/50 p-3 lg:p-4 rounded-xl lg:rounded-2xl border border-slate-50/50 hover:bg-white hover:border-slate-100 transition-all">
-                                            <div className="flex justify-between items-start mb-1 lg:mb-2">
-                                                <p className="text-[6px] lg:text-[7px] font-black text-slate-300 uppercase tracking-widest leading-none">{label}</p>
-                                                {icon && <span className="hidden sm:block text-[6px] font-black text-primary/40 leading-none">{icon}</span>}
-                                            </div>
-                                            <p className={`text-xs lg:text-base font-black tracking-tighter tabular-nums ${color}`}>{value}</p>
-                                        </div>
-                                    ))}
-                                </div>
+
                             </div>
                         );
                     })}
@@ -318,20 +303,7 @@ const PricingMgmt = () => {
                             </div>
 
                             {/* Prices */}
-                            {[
-                                { label: '1 Adult Rate (₹)', key: 'adult1Price' },
-                                { label: '2 Adult Rate (₹)', key: 'adult2Price' },
-                                { label: 'Extra Adult Cost (₹)', key: 'extraAdultPrice' },
-                                { label: 'Per Child Cost (₹)', key: 'childPrice' },
-                            ].map(({ label, key }) => (
-                                <div key={key} className="space-y-2">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-                                    <input type="number" required min="0"
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-xs font-bold font-mono outline-none"
-                                        value={formData[key]}
-                                        onChange={e => setFormData(f => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
-                                </div>
-                            ))}
+
 
                             {/* Plan Image */}
                             <div className="md:col-span-2 space-y-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">

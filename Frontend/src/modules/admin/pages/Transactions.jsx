@@ -100,16 +100,16 @@ const Transactions = () => {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-left min-w-[900px] lg:min-w-0">
+                <div className="overflow-x-auto custom-scrollbar table-responsive-container">
+                    <table className="w-full text-left min-w-[900px]">
                         <thead>
-                            <tr className="bg-slate-50/50 text-[8px] lg:text-[10px] uppercase font-black tracking-[0.2em] text-slate-400 border-b border-slate-100">
-                                <th className="px-6 lg:px-8 py-4 lg:py-5">TXN Hash</th>
-                                <th className="px-4 lg:px-6 py-4 lg:py-5 font-black">Involved Party</th>
-                                <th className="px-4 lg:px-6 py-4 lg:py-5 text-center">Classification</th>
-                                <th className="px-4 lg:px-6 py-4 lg:py-5 text-right">Magnitude</th>
+                            <tr className="bg-slate-50 text-[9px] lg:text-[10px] uppercase font-black tracking-[0.2em] text-slate-400 border-b border-slate-100">
+                                <th className="px-6 lg:px-8 py-4 lg:py-5 sticky left-0 bg-slate-50 z-10 border-r border-slate-100">Hash</th>
+                                <th className="px-4 lg:px-6 py-4 lg:py-5 font-black">Party</th>
+                                <th className="px-4 lg:px-6 py-4 lg:py-5 text-center">Type</th>
+                                <th className="px-4 lg:px-6 py-4 lg:py-5 text-right">Amount</th>
                                 <th className="px-4 lg:px-6 py-4 lg:py-5">Reference</th>
-                                <th className="px-6 lg:px-8 py-4 lg:py-5 text-right">Timestamp</th>
+                                <th className="px-6 lg:px-8 py-4 lg:py-5 text-right whitespace-nowrap">Timestamp</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -121,9 +121,9 @@ const Transactions = () => {
                                 </tr>
                             ) : (
                                 filtered.map((t) => (
-                                    <tr key={t._id} className="hover:bg-slate-50/50 transition-all group">
-                                        <td className="px-6 lg:px-8 py-4 lg:py-6 font-bold text-[8px] lg:text-[10px] text-slate-400 group-hover:text-secondary uppercase">
-                                            {t._id?.slice(-8)}
+                                    <tr key={t._id} className="hover:bg-slate-50/50 transition-all group border-b border-slate-50 last:border-0">
+                                        <td className="px-6 lg:px-8 py-4 lg:py-6 font-bold text-[9px] lg:text-[10px] text-slate-400 group-hover:text-secondary uppercase sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-100">
+                                            {t._id?.slice(-6)}
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 lg:py-6 font-black text-secondary text-[10px] lg:text-xs">
                                             {t.description?.includes('Portal') ? 'Hotel Ananya Admin' : (t.user?.name || 'Unknown Party')}
