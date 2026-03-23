@@ -2,6 +2,7 @@ import express from 'express';
 import Booking from '../models/Booking.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
+import { sendNotificationToUser, notifyAdmins } from '../utils/notificationHelper.js';
 
 const router = express.Router();
 
@@ -54,6 +55,23 @@ router.post('/', async (req, res) => {
             bookingStatus: 'confirmed'
         });
 
+        if (booking) {
+            // PUSH NOTIFICATION: User (Booking Success)
+            await sendNotificationToUser(
+                userId,
+                "Stay Confirmed!",
+                `Your stay for ${checkIn} to ${checkOut} has been successfully booked.`,
+                { bookingId: booking._id.toString(), type: 'booking' }
+            );
+
+            // PUSH NOTIFICATION: Admin (New Booking)
+            await notifyAdmins(
+                "Incoming Booking!",
+                `Guest ${user.name} just booked room for ${checkIn} to ${checkOut}.`,
+                { bookingId: booking._id.toString(), type: 'admin_booking' }
+            );
+        }
+
         res.status(201).json(booking);
     } catch (error) {
         console.error(error);
@@ -92,6 +110,16 @@ router.get('/', async (req, res) => {
 router.put('/:id/status', async (req, res) => {
     try {
         const booking = await Booking.findByIdAndUpdate(req.params.id, { bookingStatus: req.body.status }, { new: true });
+
+        if (booking) {
+            // PUSH NOTIFICATION: User (Update Status)
+            await sendNotificationToUser(
+                booking.user,
+                "Booking Update",
+                `Your booking #${booking.bookingId} status has been changed to ${req.body.status}.`,
+                { bookingId: booking._id.toString(), status: req.body.status, type: 'status_update' }
+            );
+        }
         res.json(booking);
     } catch (error) {
         res.status(500).json({ message: 'Error updating status' });

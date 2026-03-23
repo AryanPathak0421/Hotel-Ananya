@@ -5,7 +5,6 @@
   --color-primary-dark: #2D5A50;
   --color-secondary: #0F1D1A;
   --color-accent: #C5A358;
-  /* Luxury Gold accent for subtle details */
   --color-cream: #F9FBFA;
   --color-surface: #ffffff;
   --color-muted: #64748B;
@@ -23,7 +22,10 @@
   }
 
   body {
-    @apply bg-cream text-secondary font-sans antialiased;
+    background-color: var(--color-cream);
+    color: var(--color-secondary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
     min-height: 100vh;
     letter-spacing: -0.01em;
   }
@@ -34,91 +36,99 @@
   h4,
   h5,
   h6 {
-    @apply font-serif font-medium;
+    font-family: var(--font-serif);
+    font-weight: 500;
     letter-spacing: -0.02em;
   }
 }
 
 @layer components {
   .btn-premium {
-    @apply relative overflow-hidden px-10 py-4 bg-primary text-white font-bold tracking-widest uppercase text-[10px] transition-all duration-500 hover:bg-primary-dark hover:shadow-2xl active:scale-95 disabled:opacity-50;
+    position: relative;
+    overflow: hidden;
+    padding: 1rem 2.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: 10px;
+    transition: all 0.5s ease;
+    border-radius: 0.75rem;
+  }
+
+  .btn-premium:hover {
+    background-color: var(--color-primary-dark);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   }
 
   .btn-outline {
-    @apply relative overflow-hidden px-10 py-4 border border-secondary/20 text-secondary font-bold tracking-widest uppercase text-[10px] transition-all duration-500 hover:bg-secondary hover:text-white;
+    position: relative;
+    overflow: hidden;
+    padding: 1rem 2.5rem;
+    border: 1px solid rgba(15, 29, 26, 0.2);
+    color: var(--color-secondary);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: 10px;
+    transition: all 0.5s ease;
+    border-radius: 0.75rem;
+  }
+
+  .btn-outline:hover {
+    background-color: var(--color-secondary);
+    color: white;
   }
 
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-luxury;
-  }
-
-  .section-container {
-    @apply max-w-7xl mx-auto px-6 sm:px-12 lg:px-16 py-20 md:py-32;
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: var(--shadow-luxury);
   }
 
   .luxury-card {
-    @apply bg-white rounded-[2rem] border border-slate-100 shadow-luxury transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl;
+    background-color: white;
+    border-radius: 2rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: var(--shadow-luxury);
+    transition: all 0.5s ease;
+  }
+
+  .luxury-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
   }
 }
 
-/* Custom Scrollbar for modern feel */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
+@layer utilities {
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full transition-colors;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-300;
-}
-
-/* Table responsiveness enhancement */
-.table-responsive-container {
-  @apply w-full overflow-x-auto custom-scrollbar relative;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Card-like behavior for mobile tables can be handled with specific classes if needed, 
-   but for now, we ensure the overflow is smooth and visible. */
-
-@media (max-width: 640px) {
-
-  .btn-premium,
-  .btn-outline {
-    @apply px-6 py-3 text-[8px];
-  }
-}
-
-/* Animations and transitions */
-.animate-in {
-  animation: fadeIn 0.5s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  /* Scrollbar Utilities */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
   }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
   }
-}
 
-/* Hide scrollbar but keep functionality */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e2e8f0;
+    border-radius: 9999px;
+  }
 
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #cbd5e1;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

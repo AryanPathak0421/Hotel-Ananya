@@ -21,7 +21,7 @@ const Signup = () => {
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
     const [picLoading, setPicLoading] = useState(false);
-    const { signup, user } = useAuth();
+    const { signup, user, verifyOtp } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -74,7 +74,7 @@ const Signup = () => {
         setLoading(true);
         const result = await signup(formData);
         if (result.success) {
-            setStep(5); // Go to OTP verification
+            setStep(5); // Go to OTP verification step
         } else {
             alert(result.message);
         }
@@ -85,15 +85,14 @@ const Signup = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const { data } = await api.post('/auth/verify-otp', {
-                email: formData.email,
-                otp
-            });
-            if (data.success) {
+            const result = await verifyOtp(formData.email, otp);
+            if (result.success) {
                 navigate('/');
+            } else {
+                alert(result.message || "Invalid OTP");
             }
         } catch (error) {
-            alert(error.response?.data?.message || "Invalid OTP");
+            alert("Verification failed");
         } finally {
             setLoading(false);
         }
@@ -101,7 +100,7 @@ const Signup = () => {
 
     const renderStep = () => {
         switch (step) {
-            case 1: // Basic Info
+            case 1:
                 return (
                     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="space-y-1.5">
@@ -136,7 +135,7 @@ const Signup = () => {
                         </button>
                     </div>
                 );
-            case 2: // Account Info
+            case 2:
                 return (
                     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="space-y-1.5">
@@ -172,7 +171,7 @@ const Signup = () => {
                         </div>
                     </div>
                 );
-            case 3: // Location Details
+            case 3:
                 return (
                     <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="space-y-1.5">
@@ -203,7 +202,7 @@ const Signup = () => {
                         </div>
                     </div>
                 );
-            case 4: // Optional & Terms
+            case 4:
                 return (
                     <form onSubmit={handleRegister} className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="grid grid-cols-2 gap-3">
@@ -299,23 +298,23 @@ const Signup = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-serif text-secondary lowercase capitalize">Final <span className="text-primary italic">Verification</span></h2>
-                            <p className="text-xs text-slate-400 mt-2">Enter the verification code sent to <br /><span className="text-secondary font-bold">{formData.email}</span></p>
+                            <p className="text-xs text-slate-400 mt-2">Enter the 6-digit verification code sent to <br /><span className="text-secondary font-bold">{formData.email}</span></p>
                         </div>
 
                         <div className="space-y-4">
                             <input
                                 type="text"
-                                maxLength="4"
+                                maxLength="6"
                                 value={otp}
                                 onChange={e => setOtp(e.target.value)}
-                                placeholder="1234"
-                                className="w-32 mx-auto bg-slate-100 border-2 border-slate-200 focus:border-emerald-500 text-2xl font-black text-center tracking-[0.5em] py-4 rounded-2xl outline-none"
+                                placeholder="000000"
+                                className="w-48 mx-auto bg-slate-100 border-2 border-slate-200 focus:border-emerald-500 text-2xl font-black text-center tracking-[0.5em] py-4 rounded-2xl outline-none"
                             />
-                            <p className="text-[10px] text-slate-400 italic">Hint: use default code 1234</p>
+                            <p className="text-[10px] text-slate-400 italic font-medium">Please check your mobile messages for the 6-digit code</p>
 
                             <button
                                 onClick={handleVerifyOtp}
-                                disabled={loading || otp.length < 4}
+                                disabled={loading || otp.length < 6}
                                 className="w-full py-4 bg-emerald-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-600 active:scale-95 transition-all shadow-xl shadow-emerald-500/20"
                             >
                                 {loading ? 'Checking...' : 'Verify & Enter Portal'}
@@ -330,7 +329,6 @@ const Signup = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-12">
             <div className="w-full max-w-md">
-                {/* Brand Logo Above Card */}
                 <div className="flex flex-col items-center mb-10 transition-all duration-700 animate-in fade-in slide-in-from-top-6">
                     <img src="/logo.png" alt="Ananya Hotel" className="h-20 w-auto drop-shadow-2xl" />
                     <div className="mt-2 text-center">
@@ -353,9 +351,7 @@ const Signup = () => {
                                 </div>
                             </div>
                         )}
-
                         {renderStep()}
-
                         {step < 5 && (
                             <p className="text-center text-[10px] font-bold text-slate-400 mt-10 uppercase tracking-widest">
                                 Already registered?{' '}
@@ -370,4 +366,3 @@ const Signup = () => {
 };
 
 export default Signup;
-

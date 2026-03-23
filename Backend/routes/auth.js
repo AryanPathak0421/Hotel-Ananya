@@ -1,6 +1,8 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import PendingUser from '../models/PendingUser.js';
+import { sendOTP } from '../utils/smsHelper.js';
 
 const router = express.Router();
 
@@ -11,7 +13,13 @@ const generateToken = (id) => {
     });
 };
 
-// @desc    Register a new user
+// Helper for OTP generation
+const getGeneratedOtp = () => {
+    const isOtpEnabled = process.env.OTP_ENABLED === 'true';
+    return isOtpEnabled ? Math.floor(100000 + Math.random() * 900000).toString() : '123456';
+};
+
+// @desc    Initiate Registration (Temporary Storage)
 // @route   POST /api/auth/register
 // @access  Public
 router.post('/register', async (req, res) => {
@@ -22,115 +30,186 @@ router.post('/register', async (req, res) => {
     } = req.body;
 
     try {
+        // 1. Check if user already exists permanently
         const userExists = await User.findOne({ email });
+        if (userExists) return res.status(400).json({ message: 'User already exists' });
 
-        if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
+        // 2. Clear old pending signups for this email if any
+        await PendingUser.deleteMany({ email });
 
-        const user = await User.create({
-            name,
-            email,
-            password,
-            role: role || 'user',
-            mobile,
-            country,
-            city,
-            profilePicture,
-            preferredLanguage,
-            referralCode,
-            otp: '1234' // Default for now
+        // 3. Create Pending User Record
+        const otp = getGeneratedOtp();
+        const pendingUser = await PendingUser.create({
+            name, email, password, mobile, country, city, profilePicture,
+            preferredLanguage, referralCode, role: role || 'user',
+            otp: otp
         });
 
-        if (user) {
+        if (pendingUser) {
+            await sendOTP(mobile, otp);
             res.status(201).json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                profilePicture: user.profilePicture,
-                isVerified: user.isVerified,
-                token: generateToken(user._id)
+                success: true,
+                message: 'OTP sent to mobile. Verification pending.',
+                email: email,
+                mobile: mobile
             });
-        } else {
-            res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        console.error(`Register Error: ${error.message}`);
-        res.status(500).json({ message: 'Server error during registration' });
+        console.error('Registration error:', error);
+        res.status(500).json({ message: 'Registration failed' });
     }
 });
 
-// @desc    Verify OTP
+// @desc    Verify OTP & Finalize Registration (or Login 2FA)
 // @route   POST /api/auth/verify-otp
 // @access  Public
 router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
 
     try {
-        const user = await User.findOne({ email });
+        // 1. First, check if there's a PENDING registration for this email
+        const pending = await PendingUser.findOne({ email });
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        if (pending) {
+            // Flow: Finalize Registration
+            if (pending.otp === otp) {
+                // Create actual user (Permanent DB entry)
+                const user = await User.create({
+                    name: pending.name,
+                    email: pending.email,
+                    password: pending.password,
+                    role: pending.role,
+                    mobile: pending.mobile,
+                    country: pending.country,
+                    city: pending.city,
+                    profilePicture: pending.profilePicture,
+                    preferredLanguage: pending.preferredLanguage,
+                    referralCode: pending.referralCode,
+                    isVerified: true
+                });
+
+                // Clear temporary record
+                await PendingUser.findByIdAndDelete(pending._id);
+
+                return res.json({
+                    success: true,
+                    message: 'Registration finalized successfully',
+                    user: {
+                        _id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        mobile: user.mobile,
+                        role: user.role,
+                        token: generateToken(user._id)
+                    }
+                });
+            } else {
+                return res.status(400).json({ success: false, message: 'Invalid OTP' });
+            }
         }
 
-        if (user.otp === otp) {
-            user.isVerified = true;
-            await user.save();
-            res.json({ message: 'Account verified successfully', success: true });
+        // 2. If no pending, check for EXISTING user (Flow: Login 2FA)
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) return res.status(404).json({ message: 'Session expired or invalid user.' });
+
+        if (existingUser.otp === otp) {
+            existingUser.otp = null;
+            await existingUser.save();
+
+            return res.json({
+                success: true,
+                message: 'Login OTP verified',
+                user: {
+                    _id: existingUser._id,
+                    name: existingUser.name,
+                    email: existingUser.email,
+                    mobile: existingUser.mobile,
+                    role: existingUser.role,
+                    profilePicture: existingUser.profilePicture,
+                    token: generateToken(existingUser._id)
+                }
+            });
         } else {
-            res.status(400).json({ message: 'Invalid OTP', success: false });
+            res.status(400).json({ success: false, message: 'Invalid OTP' });
         }
     } catch (error) {
-        res.status(500).json({ message: 'Verification error' });
+        console.error('OTP Verification Logic Failed:', error);
+        res.status(500).json({ message: 'OTP verification failed' });
     }
 });
 
-// @desc    Auth user & get token
-// @route   POST /api/auth/login
-// @access  Public
+// @desc    Auth user & Send Login OTP (2FA)
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
         const user = await User.findOne({ email });
-
         if (user && (await user.matchPassword(password))) {
+            const otp = getGeneratedOtp();
+            user.otp = otp;
+            await user.save();
+            await sendOTP(user.mobile, otp);
+
             res.json({
-                _id: user._id,
-                name: user.name,
+                otpRequired: true,
                 email: user.email,
                 mobile: user.mobile,
-                city: user.city,
-                country: user.country,
-                role: user.role,
-                profilePicture: user.profilePicture,
-                walletBalance: user.walletBalance,
-                token: generateToken(user._id)
+                message: 'OTP sent for 2FA verification'
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error(`Login Error: ${error.message}`);
-        res.status(500).json({ message: 'Server error during login' });
+        res.status(500).json({ message: 'Login failed' });
+    }
+});
+
+// @desc    Request Password Reset OTP
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const otp = getGeneratedOtp();
+        user.otp = otp;
+        await user.save();
+        await sendOTP(user.mobile, otp);
+
+        res.json({ success: true, message: 'Reset OTP sent to mobile' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error sending reset OTP' });
+    }
+});
+
+// @desc    Reset Password with OTP
+router.post('/reset-password', async (req, res) => {
+    const { email, otp, newPassword } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (user.otp === otp) {
+            user.password = newPassword;
+            user.otp = null;
+            user.isVerified = true;
+            await user.save();
+            res.json({ success: true, message: 'Password reset successful' });
+        } else {
+            res.status(400).json({ success: false, message: 'Invalid OTP' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error resetting password' });
     }
 });
 
 // @desc    Get current user profile
-// @route   GET /api/auth/me/:id
-// @access  Private (though public for simple sync now)
 router.get('/me/:id', async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password');
-        if (user) {
-            res.json(user);
-        } else {
-            res.status(404).json({ message: 'User not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
+        if (user) res.json(user);
+        else res.status(404).json({ message: 'User not found' });
+    } catch (error) { res.status(500).json({ message: 'Server error' }); }
 });
 
 export default router;

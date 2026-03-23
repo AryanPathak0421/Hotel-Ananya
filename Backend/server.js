@@ -18,6 +18,7 @@ import messageRoutes from './routes/messages.js';
 import termsRoutes from './routes/terms.js';
 import notificationRoutes from './routes/notifications.js';
 import inventoryRoutes from './routes/inventory.js';
+import fcmRoutes from './routes/fcm.js';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/terms', termsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/fcm', fcmRoutes);
 
 
 // Basic Route
@@ -56,9 +58,7 @@ app.get('/', (req, res) => {
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
-    console.error('SERVER ERROR HANDLER:', err.stack);
-    // Silent write for agent to see later
-    import('fs').then(fs => fs.appendFileSync('error.log', `[${new Date().toISOString()}] ${err.stack}\n`));
+    console.error('SERVER ERROR:', err.stack);
     res.status(500).json({ message: 'Internal Server Error', error: err.message });
 });
 

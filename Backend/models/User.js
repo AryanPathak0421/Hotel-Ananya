@@ -48,13 +48,23 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    // For Multi-factor Auth and generic OTP
     otp: {
         type: String,
-        default: '1234'
+        default: null
+    },
+    // Push Notification Tokens
+    fcmTokens: {
+        type: [String],
+        default: []
+    },
+    fcmTokenMobile: {
+        type: [String],
+        default: []
     },
     walletBalance: {
         type: Number,
-        default: 1000
+        default: 0
     },
     status: {
         type: String,
@@ -69,9 +79,12 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) {
         next();
+    } try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+    } catch (err) {
+        next(err);
     }
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Compare password
